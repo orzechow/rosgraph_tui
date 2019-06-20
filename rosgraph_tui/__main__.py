@@ -1,38 +1,41 @@
 import sys
 import urwid
 
+import widgets
+
 
 class Model:
     def __init__(self):
-        self.text = u" Hello World "
+        self.choices = u'Chapman Cleese Gilliam Idle Jones Palin'.split()
 
-
-class TextView(urwid.AttrMap):
-    def __init__(self):
-        self.txt = urwid.Text(('banner', u" init "), align='center')
-        self.map1 = urwid.AttrMap(self.txt, 'streak')
-        self.fill = urwid.Filler(self.map1)
-        super(TextView, self).__init__(self.fill, 'bg')
+    def handle_choice(self, choice):
+        idx = self.choices.index(choice)
+        idx = min(idx, len(self.choices) - 1)
+        self.choices.remove(self.choices[idx])
 
 
 class View:
-    def __init__(self):
+    def __init__(self, choices):
         self.palette = [
             ('banner', 'black', 'light gray'),
             ('streak', 'black', 'dark red'),
-            ('bg', 'black', 'dark blue'), ]
+            ('bg', 'black', 'dark blue'),
+            ('reversed', 'standout', ''), ]
 
-        self.main_view = TextView()
+        self.main_widget = widgets.PaddedListFrame(u"your choice:", choices)
 
-    def set_text(self, txt):
-        self.main_view.txt.set_text(('banner', txt))
+    def reset_list(self, choices):
+        self.main_widget.reset_list(choices)
 
 
 class Controller:
     def __init__(self):
         self.model = Model()
-        self.banner = View()
-        self.loop = urwid.MainLoop(self.banner.main_view, self.banner.palette, unhandled_input=self.handle_input)
+        self.view = View(self.model.choices)
+
+        urwid.connect_signal(self.view.main_widget.list, 'choice', self.handle_choice)
+
+        self.loop = urwid.MainLoop(self.view.main_widget, self.view.palette, unhandled_input=self.handle_input)
 
     def run(self):
         self.loop.run()
@@ -40,11 +43,15 @@ class Controller:
     def exit_on_q(self, key):
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
-        self.banner.set_text(self.model.text)
 
     def handle_input(self, key):
         self.exit_on_q(key)
 
+    def handle_choice(self, list, button, choice):
+        # workaround for urwid bug
+        button.set_text("")
+        self.model.handle_choice(choice)
+        self.view.reset_list(self.model.choices)
 
 
 def main(args=None):

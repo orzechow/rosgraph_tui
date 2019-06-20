@@ -27,5 +27,10 @@ setuptools.setup(
         "Programming Language :: Python :: 2",
         "Topic :: Software Development"
     ],
+    entry_points={
+        'console_scripts': [
+            'rosgraph_tui = rosgraph_tui.__main__:main'
+        ]
+    },
     install_requires=requirements
 )

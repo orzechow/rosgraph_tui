@@ -3,6 +3,9 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+with open("requirements.txt", "r") as fh:
+    requirements = fh.read()
+
 setuptools.setup(
     name='rosgraph_tui',
     version='0.0.1',
@@ -23,5 +26,6 @@ setuptools.setup(
         "Operating System :: Unix",
         "Programming Language :: Python :: 2",
         "Topic :: Software Development"
-    ]
+    ],
+    install_requires=requirements
 )

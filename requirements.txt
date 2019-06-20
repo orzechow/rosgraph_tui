@@ -1,0 +1,2 @@
+setuptools==41.0.1
+urwid==2.0.1

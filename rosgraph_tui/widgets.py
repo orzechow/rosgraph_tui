@@ -82,3 +82,21 @@ class PaddedListFrame(urwid.Padding):
 
     def reset_list(self, choices):
         self.list.reset_list(choices)
+
+
+class ListColumn(urwid.Columns):
+    def __init__(self, choices_left, choices_middle, choices_right):
+        self.column_left = PaddedListFrame(u"Input:", choices_left)
+        self.column_middle = PaddedListFrame(u"middle choice:", choices_middle)
+        self.column_right = PaddedListFrame(u"Output:", choices_right)
+
+        body = [self.column_left] + [self.column_middle] + [self.column_right]
+        super(ListColumn, self).__init__(body)
+
+    def reset_list(self, choices, column):
+        if column == 'left':
+            self.column_left.reset_list(choices)
+        elif column == 'middle':
+            self.column_middle.reset_list(choices)
+        elif column == 'right':
+            self.column_right.reset_list(choices)

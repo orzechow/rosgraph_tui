@@ -6,34 +6,38 @@ import widgets
 
 class Model:
     def __init__(self):
-        self.choices = u'Chapman Cleese Gilliam Idle Jones Palin'.split()
+        self.choices_left = u'Chapman Cleese Gilliam Idle Jones Palin'.split()
+        self.choices_middle = u'Chapman Cleese Gilliam Idle Jones Palin'.split()
+        self.choices_right = u'Chapman Cleese Gilliam Idle Jones Palin'.split()
 
-    def handle_choice(self, choice):
-        idx = self.choices.index(choice)
-        idx = min(idx, len(self.choices) - 1)
-        self.choices.remove(self.choices[idx])
+    def handle_choice(self, list, choice):
+        idx = list.index(choice)
+        idx = min(idx, len(list) - 1)
+        list.remove(list[idx])
 
 
 class View:
-    def __init__(self, choices):
+    def __init__(self, choices_left, choices_middle, choices_right):
         self.palette = [
             ('banner', 'black', 'light gray'),
             ('streak', 'black', 'dark red'),
             ('bg', 'black', 'dark blue'),
             ('reversed', 'standout', ''), ]
 
-        self.main_widget = widgets.PaddedListFrame(u"your choice:", choices)
+        self.main_widget = widgets.ListColumn(choices_left, choices_middle, choices_right)
 
-    def reset_list(self, choices):
-        self.main_widget.reset_list(choices)
+    def reset_list(self, choices, column):
+        self.main_widget.reset_list(choices, column)
 
 
 class Controller:
     def __init__(self):
         self.model = Model()
-        self.view = View(self.model.choices)
+        self.view = View(self.model.choices_left, self.model.choices_middle, self.model.choices_right)
 
-        urwid.connect_signal(self.view.main_widget.list, 'choice', self.handle_choice)
+        urwid.connect_signal(self.view.main_widget.column_left.list, 'choice', self.handle_choice, 'left')
+        urwid.connect_signal(self.view.main_widget.column_middle.list, 'choice', self.handle_choice, 'middle')
+        urwid.connect_signal(self.view.main_widget.column_right.list, 'choice', self.handle_choice, 'right')
 
         self.loop = urwid.MainLoop(self.view.main_widget, self.view.palette, unhandled_input=self.handle_input)
 
@@ -47,11 +51,16 @@ class Controller:
     def handle_input(self, key):
         self.exit_on_q(key)
 
-    def handle_choice(self, list, button, choice):
-        # workaround for urwid bug
-        button.set_text("")
-        self.model.handle_choice(choice)
-        self.view.reset_list(self.model.choices)
+    def handle_choice(self, list, button, choice, column):
+        if column == 'left':
+            self.model.handle_choice(self.model.choices_left, choice)
+            self.view.reset_list(self.model.choices_left, column)
+        elif column == 'middle':
+            self.model.handle_choice(self.model.choices_middle, choice)
+            self.view.reset_list(self.model.choices_middle, column)
+        elif column == 'right':
+            self.model.handle_choice(self.model.choices_right, choice)
+            self.view.reset_list(self.model.choices_right, column)
 
 
 def main(args=None):

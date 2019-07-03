@@ -98,6 +98,9 @@ class ListColumn(urwid.Columns):
         body = [self.column_left] + [self.column_middle] + [self.column_right]
         super(ListColumn, self).__init__(body)
 
+    def set_title(self, title):
+        self.column_middle.set_title(title)
+
     def reset_list(self, choices, column):
         if column == self.Columns.LEFT:
             self.column_left.reset_list(choices)

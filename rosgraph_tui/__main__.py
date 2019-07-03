@@ -23,6 +23,9 @@ class View:
         self.main_widget = widgets.ListColumn(choices_left, choices_middle, choices_right)
         self.main_widget_with_attr = urwid.AttrMap(self.main_widget, 'bg')
 
+    def get_selection(self):
+        return self.main_widget.get_selection()
+
     def set_title(self, title):
         self.main_widget.set_title(title)
 
@@ -65,8 +68,19 @@ class Controller:
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
 
+    def choose_on_arrow_out_of_view(self, key):
+        if key == 'left':
+            selection = self.view.get_selection()
+            if selection:
+                self.handle_choice(None, None, selection, self.view.Columns.LEFT)
+        elif key == 'right':
+            selection = self.view.get_selection()
+            if selection:
+                self.handle_choice(None, None, selection, self.view.Columns.RIGHT)
+
     def handle_input(self, key):
         self.exit_on_q(key)
+        self.choose_on_arrow_out_of_view(key)
 
     def handle_node_choice(self, node):
         self.model.main_topic_list = []

@@ -79,6 +79,10 @@ class PaddedListFrame(urwid.Padding):
         body = urwid.Frame(self.list, self.header, self.footer)
         super(PaddedListFrame, self).__init__(body, left=2, right=2)
 
+    def get_selection(self):
+        if self.original_widget.body.focus:
+            return self.original_widget.body.focus.base_widget.text
+
     def set_title(self, title):
         self.header[0].set_text(('header', title))
 
@@ -97,6 +101,10 @@ class ListColumn(urwid.Columns):
 
         body = [self.column_left] + [self.column_middle] + [self.column_right]
         super(ListColumn, self).__init__(body)
+
+    def get_selection(self):
+        if self.focus:
+            return self.focus.get_selection()
 
     def set_title(self, title):
         self.column_middle.set_title(title)

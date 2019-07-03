@@ -72,14 +72,15 @@ class PaddedListFrame(urwid.Padding):
         return frozenset([urwid.FIXED])
 
     def __init__(self, title, choices):
-        self.title = title
-
-        self.header = urwid.Pile([('pack', urwid.Text(self.title)), ('pack', urwid.Divider())])
+        self.header = urwid.Pile([('pack', urwid.Text(title)), ('pack', urwid.Divider())])
         self.list = List(choices)
         self.footer = urwid.Pile([('pack', urwid.Divider()), ('pack', urwid.Text("FOOOTER"))])
 
         body = urwid.Frame(self.list, self.header, self.footer)
         super(PaddedListFrame, self).__init__(body, left=2, right=2)
+
+    def set_title(self, title):
+        self.header[0].set_text(title)
 
     def reset_list(self, choices):
         self.list.reset_list(choices)

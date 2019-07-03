@@ -42,10 +42,10 @@ class List(urwid.ListBox):
 
     def set_choices(self, choices):
         self.choices_list = []
-        for c in choices:
-            button = ListEntry(c)
-            urwid.connect_signal(button, 'click', self.item_chosen, c)
-            self.choices_list.append(urwid.AttrMap(button, None, focus_map='reversed'))
+        for style, text in choices:
+            button = ListEntry(text)
+            urwid.connect_signal(button, 'click', self.item_chosen, text)
+            self.choices_list.append(urwid.AttrMap(button, style, focus_map='reversed'))
         self.reset_widget()
 
     def reset_list(self, choices):
@@ -72,15 +72,15 @@ class PaddedListFrame(urwid.Padding):
         return frozenset([urwid.FIXED])
 
     def __init__(self, title, choices):
-        self.header = urwid.Pile([('pack', urwid.Text(title)), ('pack', urwid.Divider())])
+        self.header = urwid.Pile([('pack', urwid.Text(('header', title))), ('pack', urwid.Divider())])
         self.list = List(choices)
-        self.footer = urwid.Pile([('pack', urwid.Divider()), ('pack', urwid.Text("FOOOTER"))])
+        self.footer = urwid.Pile([('pack', urwid.Divider()), ('pack', urwid.Text(('footer', "FOOOTER")))])
 
         body = urwid.Frame(self.list, self.header, self.footer)
         super(PaddedListFrame, self).__init__(body, left=2, right=2)
 
     def set_title(self, title):
-        self.header[0].set_text(title)
+        self.header[0].set_text(('header', title))
 
     def reset_list(self, choices):
         self.list.reset_list(choices)

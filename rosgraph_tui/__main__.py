@@ -13,10 +13,15 @@ class View:
         self.palette = [
             ('banner', 'black', 'light gray'),
             ('streak', 'black', 'dark red'),
-            ('bg', 'black', 'dark blue'),
-            ('reversed', 'standout', ''), ]
+            ('bg', 'black', 'black'),
+            ('header', 'light gray,bold', 'black'),
+            ('footer', 'light gray', 'black'),
+            ('node', 'light gray', 'black'),
+            ('topic', 'dark cyan', 'black'),
+            ('reversed', 'bold', '')]
 
         self.main_widget = widgets.ListColumn(choices_left, choices_middle, choices_right)
+        self.main_widget_with_attr = urwid.AttrMap(self.main_widget, 'bg')
 
     def set_title(self, title):
         self.main_widget.set_title(title)
@@ -51,7 +56,7 @@ class Controller:
         urwid.connect_signal(self.view.main_widget.column_right.list, 'choice', self.handle_choice,
                              self.view.Columns.RIGHT)
 
-        self.loop = urwid.MainLoop(self.view.main_widget, self.view.palette, unhandled_input=self.handle_input)
+        self.loop = urwid.MainLoop(self.view.main_widget_with_attr, self.view.palette, unhandled_input=self.handle_input)
 
     def run(self):
         self.loop.run()
@@ -138,9 +143,19 @@ class Controller:
             nodes = self.model.main_node_list
             topics = self.model.main_topic_list
 
-        self.view.reset_list(self.model.input_list, self.view.Columns.LEFT)
+        nodes = [('node', name) for name in nodes]
+        topics = [('topic', name) for name in topics]
+
+        if self.main_mode == self.Modes.NODES:
+            input = [('topic', name) for name in self.model.input_list]
+            output = [('topic', name) for name in self.model.output_list]
+        else:
+            input = [('node', name) for name in self.model.input_list]
+            output = [('node', name) for name in self.model.output_list]
+
+        self.view.reset_list(input, self.view.Columns.LEFT)
         self.view.reset_list(nodes + topics, self.view.Columns.MIDDLE)
-        self.view.reset_list(self.model.output_list, self.view.Columns.RIGHT)
+        self.view.reset_list(output, self.view.Columns.RIGHT)
         self.view.set_title(str(self.main_mode).replace('_', ' ').title() + ':')
 
 

@@ -18,6 +18,8 @@ class Model:
 
 class View:
     def __init__(self, choices_left, choices_middle, choices_right):
+        self.Columns = widgets.ListColumn.Columns
+
         self.palette = [
             ('banner', 'black', 'light gray'),
             ('streak', 'black', 'dark red'),
@@ -35,9 +37,9 @@ class Controller:
         self.model = Model()
         self.view = View(self.model.choices_left, self.model.choices_middle, self.model.choices_right)
 
-        urwid.connect_signal(self.view.main_widget.column_left.list, 'choice', self.handle_choice, 'left')
-        urwid.connect_signal(self.view.main_widget.column_middle.list, 'choice', self.handle_choice, 'middle')
-        urwid.connect_signal(self.view.main_widget.column_right.list, 'choice', self.handle_choice, 'right')
+        urwid.connect_signal(self.view.main_widget.column_left.list, 'choice', self.handle_choice, self.view.Columns.LEFT)
+        urwid.connect_signal(self.view.main_widget.column_middle.list, 'choice', self.handle_choice, self.view.Columns.MIDDLE)
+        urwid.connect_signal(self.view.main_widget.column_right.list, 'choice', self.handle_choice, self.view.Columns.RIGHT)
 
         self.loop = urwid.MainLoop(self.view.main_widget, self.view.palette, unhandled_input=self.handle_input)
 
@@ -52,13 +54,13 @@ class Controller:
         self.exit_on_q(key)
 
     def handle_choice(self, list, button, choice, column):
-        if column == 'left':
+        if column == self.view.Columns.LEFT:
             self.model.handle_choice(self.model.choices_left, choice)
             self.view.reset_list(self.model.choices_left, column)
-        elif column == 'middle':
+        elif column == self.view.Columns.MIDDLE:
             self.model.handle_choice(self.model.choices_middle, choice)
             self.view.reset_list(self.model.choices_middle, column)
-        elif column == 'right':
+        elif column == self.view.Columns.RIGHT:
             self.model.handle_choice(self.model.choices_right, choice)
             self.view.reset_list(self.model.choices_right, column)
 

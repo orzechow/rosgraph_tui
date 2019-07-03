@@ -126,10 +126,10 @@ class Controller:
 
     def get_list_entry(self, list_entry):
         if self.main_mode == self.Modes.NODES_AND_TOPICS:
-            if "Node:  " in list_entry:
-                return list_entry[7:], self.ListEntryTypes.NODE
-            elif "Topic: " in list_entry:
-                return list_entry[7:], self.ListEntryTypes.TOPIC
+            if "N " in list_entry:
+                return list_entry[2:], self.ListEntryTypes.NODE
+            elif "T " in list_entry:
+                return list_entry[2:], self.ListEntryTypes.TOPIC
             else:
                 raise TypeError("list entry is neither node nor topic: " + list_entry)
         else:
@@ -137,8 +137,8 @@ class Controller:
 
     def update_view(self):
         if self.main_mode == self.Modes.NODES_AND_TOPICS:
-            nodes = ["Node:  " + name for name in self.model.main_node_list]
-            topics = ["Topic: " + name for name in self.model.main_topic_list]
+            nodes = ["N " + name for name in self.model.main_node_list]
+            topics = ["T " + name for name in self.model.main_topic_list]
         else:
             nodes = self.model.main_node_list
             topics = self.model.main_topic_list

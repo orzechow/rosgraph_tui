@@ -18,6 +18,8 @@ class View:
             ('footer', 'light gray', 'black'),
             ('node', 'light gray', 'black'),
             ('topic', 'dark cyan', 'black'),
+            ('chosen_node', 'light gray,bold', 'black'),
+            ('chosen_topic', 'dark cyan,bold', 'black'),
             ('reversed', 'bold', '')]
 
         self.main_widget = widgets.ListColumn(choices_left, choices_middle, choices_right)
@@ -126,6 +128,7 @@ class Controller:
             self.handle_topic_choice(choice)
         else:
             choice_name, choice_type = self.get_list_entry(choice)
+            self.choice = choice_name
             if choice_type == self.ListEntryTypes.NODE:
                 self.main_mode = self.Modes.NODES
                 self.handle_node_choice(choice_name)
@@ -136,6 +139,7 @@ class Controller:
                 raise TypeError("choice is neither node nor topic: " + choice)
 
     def handle_choice(self, list, button, choice, column):
+        self.choice = choice
         if column == self.view.Columns.LEFT or column == self.view.Columns.RIGHT:
             self.handle_input_output_choice(choice)
             self.switch_mode()
@@ -166,6 +170,18 @@ class Controller:
         else:
             raise RuntimeError("get_list_entry() should only be called in NODES_AND_TOPICS mode, but mode is: " + self.main_mode)
 
+    def generate_node_style(self, name):
+        if name == self.choice:
+            return 'chosen_node', name
+        else:
+            return 'node', name
+
+    def generate_topic_style(self, name):
+        if name == self.choice:
+            return 'chosen_topic', name
+        else:
+            return 'topic', name
+
     def update_view(self):
         if self.main_mode == self.Modes.NODES_AND_TOPICS:
             nodes = ["N " + name for name in self.model.main_node_list]
@@ -174,15 +190,15 @@ class Controller:
             nodes = self.model.main_node_list
             topics = self.model.main_topic_list
 
-        nodes = [('node', name) for name in nodes]
-        topics = [('topic', name) for name in topics]
+        nodes = [self.generate_node_style(name) for name in nodes]
+        topics = [self.generate_topic_style(name) for name in topics]
 
         if self.main_mode == self.Modes.NODES:
-            input = [('topic', name) for name in self.model.input_list]
-            output = [('topic', name) for name in self.model.output_list]
+            input = [self.generate_topic_style(name) for name in self.model.input_list]
+            output = [self.generate_topic_style(name) for name in self.model.output_list]
         else:
-            input = [('node', name) for name in self.model.input_list]
-            output = [('node', name) for name in self.model.output_list]
+            input = [self.generate_node_style(name) for name in self.model.input_list]
+            output = [self.generate_node_style(name) for name in self.model.output_list]
 
         self.view.reset_list(input, self.view.Columns.LEFT)
         self.view.reset_list(nodes + topics, self.view.Columns.MIDDLE)

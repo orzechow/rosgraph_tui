@@ -68,6 +68,22 @@ class Controller:
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
 
+    def show_all_on_esc(self, key):
+        if key == 'esc':
+            if self.main_mode == self.Modes.NODES and len(self.model.main_node_list) == 1:
+                self.model.main_node_list = self.model.graph.get_nodes()
+            elif self.main_mode == self.Modes.TOPICS and len(self.model.main_topic_list) == 1:
+                self.model.main_topic_list = self.model.graph.get_topics()
+            else:
+                self.main_mode = self.Modes.NODES_AND_TOPICS
+                self.model.main_node_list = self.model.graph.get_nodes()
+                self.model.main_topic_list = self.model.graph.get_topics()
+                self.model.input_list = []
+                self.model.output_list = []
+
+            self.update_view()
+            self.view.set_focus(self.view.Columns.MIDDLE)
+
     def choose_on_arrow_out_of_view(self, key):
         if key == 'left':
             selection = self.view.get_selection()
@@ -80,6 +96,7 @@ class Controller:
 
     def handle_input(self, key):
         self.exit_on_q(key)
+        self.show_all_on_esc(key)
         self.choose_on_arrow_out_of_view(key)
 
     def handle_node_choice(self, node):

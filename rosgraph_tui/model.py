@@ -1,3 +1,5 @@
+from enum import Enum
+
 import rosnode
 import rosgraph
 
@@ -6,13 +8,52 @@ ID = '/rosgraph_tui'
 
 
 class Model:
+    ListEntryTypes = Enum('NODE', 'TOPIC')
+
     def __init__(self):
         self.graph = GraphModel()
 
-        self.input_list = ''
-        self.main_node_list = self.graph.get_nodes()
-        self.main_topic_list = self.graph.get_topics()
-        self.output_list = ''
+        self.input_list = []
+        self.main_node_list = []
+        self.main_topic_list = []
+        self.output_list = []
+
+        self.set_main_node_list(self.graph.get_nodes())
+        self.set_main_topic_list(self.graph.get_topics())
+
+    def set_list(self, list, items, item_type=None):
+        del list[:]
+        if items:
+            if item_type == self.ListEntryTypes.NODE:
+                for item in items:
+                    list.append(NodeModel(item))
+            elif item_type == self.ListEntryTypes.TOPIC:
+                for item in items:
+                    list.append(TopicModel(item))
+            else:
+                raise TypeError("list entry is neither node nor topic: " + str(item_type))
+
+    def set_input_list(self, items, item_type=None):
+        self.set_list(self.input_list, items, item_type)
+
+    def set_output_list(self, items, item_type=None):
+        self.set_list(self.output_list, items, item_type)
+
+    def set_main_node_list(self, items):
+        self.set_list(self.main_node_list, items, self.ListEntryTypes.NODE)
+
+    def set_main_topic_list(self, items):
+        self.set_list(self.main_topic_list, items, self.ListEntryTypes.TOPIC)
+
+
+class NodeModel:
+    def __init__(self, name):
+        self.name = name
+
+
+class TopicModel:
+    def __init__(self, name):
+        self.name = name
 
 
 class GraphModel:

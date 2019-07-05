@@ -40,17 +40,17 @@ class View:
 
 class Controller:
     Modes = Enum('NODES_AND_TOPICS', 'NODES', 'TOPICS')
-    ListEntryTypes = Enum('NODE', 'TOPIC')
 
     def __init__(self):
         self.main_mode = self.Modes.NODES_AND_TOPICS
-        self.choice = ''
-        self.choice_type = self.ListEntryTypes.NODE
 
         self.model = model.Model()
 
         self.view = View([], [], [])
         self.view.set_focus(self.view.Columns.MIDDLE)
+
+        self.choice = ''
+        self.choice_type = self.model.ListEntryTypes.NODE
 
         self.update_view()
 
@@ -73,15 +73,15 @@ class Controller:
     def show_all_on_esc(self, key):
         if key == 'esc':
             if self.main_mode == self.Modes.NODES and len(self.model.main_node_list) == 1:
-                self.model.main_node_list = self.model.graph.get_nodes()
+                self.model.set_main_node_list(self.model.graph.get_nodes())
             elif self.main_mode == self.Modes.TOPICS and len(self.model.main_topic_list) == 1:
-                self.model.main_topic_list = self.model.graph.get_topics()
+                self.model.set_main_topic_list(self.model.graph.get_topics())
             else:
                 self.main_mode = self.Modes.NODES_AND_TOPICS
-                self.model.main_node_list = self.model.graph.get_nodes()
-                self.model.main_topic_list = self.model.graph.get_topics()
-                self.model.input_list = []
-                self.model.output_list = []
+                self.model.set_main_node_list(self.model.graph.get_nodes())
+                self.model.set_main_topic_list(self.model.graph.get_topics())
+                self.model.set_input_list([])
+                self.model.set_output_list([])
 
             self.update_view()
             self.view.set_focus(self.view.Columns.MIDDLE)
@@ -102,16 +102,16 @@ class Controller:
         self.choose_on_arrow_out_of_view(key)
 
     def handle_node_choice(self, node):
-        self.model.main_topic_list = []
-        self.model.main_node_list = [node]
-        self.model.input_list = self.model.graph.get_subscriptions(node)
-        self.model.output_list = self.model.graph.get_publications(node)
+        self.model.set_main_node_list([node])
+        self.model.set_main_topic_list([])
+        self.model.set_input_list(self.model.graph.get_subscriptions(node), self.model.ListEntryTypes.TOPIC)
+        self.model.set_output_list(self.model.graph.get_publications(node), self.model.ListEntryTypes.TOPIC)
 
     def handle_topic_choice(self, topic):
-        self.model.main_topic_list = [topic]
-        self.model.main_node_list = []
-        self.model.input_list = self.model.graph.get_publishers(topic)
-        self.model.output_list = self.model.graph.get_subscribers(topic)
+        self.model.set_main_node_list([topic])
+        self.model.set_main_topic_list([])
+        self.model.set_input_list(self.model.graph.get_publishers(topic), self.model.ListEntryTypes.NODE)
+        self.model.set_output_list(self.model.graph.get_subscribers(topic), self.model.ListEntryTypes.NODE)
 
     def handle_input_output_choice(self, choice):
         if self.main_mode == self.Modes.NODES:
@@ -129,10 +129,10 @@ class Controller:
         else:
             choice_name, choice_type = self.get_list_entry(choice)
             self.choice = choice_name
-            if choice_type == self.ListEntryTypes.NODE:
+            if choice_type == self.model.ListEntryTypes.NODE:
                 self.main_mode = self.Modes.NODES
                 self.handle_node_choice(choice_name)
-            elif choice_type == self.ListEntryTypes.TOPIC:
+            elif choice_type == self.model.ListEntryTypes.TOPIC:
                 self.main_mode = self.Modes.TOPICS
                 self.handle_topic_choice(choice_name)
             else:
@@ -162,13 +162,13 @@ class Controller:
     def get_list_entry(self, list_entry):
         if self.main_mode == self.Modes.NODES_AND_TOPICS:
             if "N " in list_entry:
-                return list_entry[2:], self.ListEntryTypes.NODE
+                return list_entry[2:], self.model.ListEntryTypes.NODE
             elif "T " in list_entry:
-                return list_entry[2:], self.ListEntryTypes.TOPIC
+                return list_entry[2:], self.model.ListEntryTypes.TOPIC
             else:
                 raise TypeError("list entry is neither node nor topic: " + list_entry)
         else:
-            raise RuntimeError("get_list_entry() should only be called in NODES_AND_TOPICS mode, but mode is: " + self.main_mode)
+            raise RuntimeError("get_list_entry() should only be called in NODES_AND_TOPICS mode, but mode is: " + str(self.main_mode))
 
     def generate_node_style(self, name):
         if name == self.choice:
@@ -184,21 +184,21 @@ class Controller:
 
     def update_view(self):
         if self.main_mode == self.Modes.NODES_AND_TOPICS:
-            nodes = ["N " + name for name in self.model.main_node_list]
-            topics = ["T " + name for name in self.model.main_topic_list]
+            nodes = ["N " + node.name for node in self.model.main_node_list]
+            topics = ["T " + node.name for node in self.model.main_topic_list]
         else:
-            nodes = self.model.main_node_list
-            topics = self.model.main_topic_list
+            nodes = [node.name for node in self.model.main_node_list]
+            topics = [node.name for node in self.model.main_topic_list]
 
         nodes = [self.generate_node_style(name) for name in nodes]
         topics = [self.generate_topic_style(name) for name in topics]
 
         if self.main_mode == self.Modes.NODES:
-            input = [self.generate_topic_style(name) for name in self.model.input_list]
-            output = [self.generate_topic_style(name) for name in self.model.output_list]
+            input = [self.generate_topic_style(item.name) for item in self.model.input_list]
+            output = [self.generate_topic_style(item.name) for item in self.model.output_list]
         else:
-            input = [self.generate_node_style(name) for name in self.model.input_list]
-            output = [self.generate_node_style(name) for name in self.model.output_list]
+            input = [self.generate_node_style(item.name) for item in self.model.input_list]
+            output = [self.generate_node_style(item.name) for item in self.model.output_list]
 
         self.view.reset_list(input, self.view.Columns.LEFT)
         self.view.reset_list(nodes + topics, self.view.Columns.MIDDLE)

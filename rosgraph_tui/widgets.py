@@ -106,8 +106,13 @@ class ListColumn(urwid.Columns):
         if self.focus:
             return self.focus.get_selection()
 
-    def set_title(self, title):
-        self.column_middle.set_title(title)
+    def set_title(self, title, column):
+        if column == self.Columns.LEFT:
+            self.column_left.set_title(title)
+        elif column == self.Columns.MIDDLE:
+            self.column_middle.set_title(title)
+        elif column == self.Columns.RIGHT:
+            self.column_right.set_title(title)
 
     def reset_list(self, choices, column):
         if column == self.Columns.LEFT:

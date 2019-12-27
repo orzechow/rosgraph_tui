@@ -9,6 +9,8 @@ import view
 
 class Controller:
     Modes = Enum('NODES_AND_TOPICS', 'NODES', 'TOPICS')
+    InputLabels = {'NODES_AND_TOPICS': 'Input', 'NODES': 'Subscriptions', 'TOPICS': 'Publishers'}
+    OutputLabels = {'NODES_AND_TOPICS': 'Output', 'NODES': 'Publications', 'TOPICS': 'Subscribers'}
 
     def __init__(self):
         self.main_mode = self.Modes.NODES_AND_TOPICS
@@ -172,7 +174,9 @@ class Controller:
         self.view.reset_list(input, self.view.Columns.LEFT)
         self.view.reset_list(nodes + topics, self.view.Columns.MIDDLE)
         self.view.reset_list(output, self.view.Columns.RIGHT)
-        self.view.set_title(str(self.main_mode).replace('_', ' ').title() + ':')
+        self.view.set_title(self.InputLabels[str(self.main_mode)] + ':', self.view.Columns.LEFT)
+        self.view.set_title(str(self.main_mode).replace('_', ' ').title() + ':', self.view.Columns.MIDDLE)
+        self.view.set_title(self.OutputLabels[str(self.main_mode)] + ':', self.view.Columns.RIGHT)
 
 
 def main(args=None):

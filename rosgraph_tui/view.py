@@ -25,8 +25,8 @@ class MainView:
     def get_selection(self):
         return self.main_widget.get_selection()
 
-    def set_title(self, title):
-        self.main_widget.set_title(title)
+    def set_title(self, title, column):
+        self.main_widget.set_title(title, column)
 
     def set_focus(self, column):
         self.main_widget.set_focus(column.index)

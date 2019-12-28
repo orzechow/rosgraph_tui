@@ -69,11 +69,11 @@ class GraphModel:
         self.all_pubs = state[0]
         self.all_subs = state[1]
 
-    def get_nodes(self, fuzzyname=''):
-        return sorted(self.all_nodes)
+    def get_nodes(self, filter_string=''):
+        return [item for item in sorted(self.all_nodes) if filter_string in item]
 
-    def get_topics(self, fuzzyname=''):
-        return sorted(t for t, l in self.all_topics)
+    def get_topics(self, filter_string=''):
+        return [item for item in sorted(t for t, l in self.all_topics) if filter_string in item]
 
     def get_publishers(self, topic_name):
         matches = [l for t, l in self.all_pubs if topic_name==t]

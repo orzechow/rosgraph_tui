@@ -20,6 +20,7 @@ class Controller:
         self.view = view.MainView([], [], [])
         self.view.set_focus(self.view.Columns.MIDDLE)
 
+        self.filter_string = ''
         self.choice = ''
         self.choice_type = self.model.ListEntryTypes.NODE
 
@@ -37,22 +38,28 @@ class Controller:
     def run(self):
         self.loop.run()
 
-    def exit_on_q(self, key):
-        if key in ('q', 'Q'):
-            raise urwid.ExitMainLoop()
-
-    def show_all_on_esc(self, key):
+    def show_all_or_exit_on_esc(self, key):
         if key == 'esc':
-            if self.main_mode == self.Modes.NODES and len(self.model.main_node_list) == 1:
-                self.model.set_main_node_list(self.model.graph.get_nodes())
-            elif self.main_mode == self.Modes.TOPICS and len(self.model.main_topic_list) == 1:
-                self.model.set_main_topic_list(self.model.graph.get_topics())
-            else:
+            is_node_selected = len(self.model.main_node_list) == 1
+            is_topic_selected = len(self.model.main_topic_list) == 1
+            is_node_filter_active = len(self.model.main_node_list) != len(self.model.graph.get_nodes())
+            is_topic_filter_active = len(self.model.main_topic_list) != len(self.model.graph.get_topics())
+
+            if self.filter_string != '':
+                self.filter_string = ''
+
+            if self.main_mode == self.Modes.NODES and (is_node_selected or is_node_filter_active):
+                self.model.set_main_node_list(self.model.graph.get_nodes(self.filter_string))
+            elif self.main_mode == self.Modes.TOPICS and (is_topic_selected or is_topic_filter_active):
+                self.model.set_main_topic_list(self.model.graph.get_topics(self.filter_string))
+            elif is_node_filter_active or is_topic_filter_active:
                 self.main_mode = self.Modes.NODES_AND_TOPICS
-                self.model.set_main_node_list(self.model.graph.get_nodes())
-                self.model.set_main_topic_list(self.model.graph.get_topics())
+                self.model.set_main_node_list(self.model.graph.get_nodes(self.filter_string))
+                self.model.set_main_topic_list(self.model.graph.get_topics(self.filter_string))
                 self.model.set_input_list([])
                 self.model.set_output_list([])
+            else:
+                raise urwid.ExitMainLoop()
 
             self.update_view()
             self.view.set_focus(self.view.Columns.MIDDLE)
@@ -67,10 +74,25 @@ class Controller:
             if selection:
                 self.handle_choice(None, None, selection, self.view.Columns.RIGHT)
 
+    def update_filter(self, key):
+        if key in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_/':
+            self.filter_string = self.filter_string + key
+            return True
+        elif key == 'backspace':
+            self.filter_string = self.filter_string[:-1]
+            return True
+        return False
+
     def handle_input(self, key):
-        self.exit_on_q(key)
-        self.show_all_on_esc(key)
+        self.show_all_or_exit_on_esc(key)
         self.choose_on_arrow_out_of_view(key)
+        if self.update_filter(key):
+            if self.main_mode == self.Modes.NODES or self.main_mode == self.Modes.NODES_AND_TOPICS:
+                self.model.set_main_node_list(self.model.graph.get_nodes(self.filter_string))
+            if self.main_mode == self.Modes.TOPICS or self.main_mode == self.Modes.NODES_AND_TOPICS:
+                self.model.set_main_topic_list(self.model.graph.get_topics(self.filter_string))
+            self.view.main_widget.set_focus_column(self.view.Columns.MIDDLE.index)
+            self.update_view()
 
     def handle_node_choice(self, node):
         self.model.set_main_node_list([node])
@@ -119,6 +141,7 @@ class Controller:
         else:
             raise TypeError("column is neither left, right nor middle!")
 
+        self.filter_string = ''
         self.update_view()
         self.view.set_focus(self.view.Columns.MIDDLE)
 
@@ -177,6 +200,7 @@ class Controller:
         self.view.set_title(self.InputLabels[str(self.main_mode)] + ':', self.view.Columns.LEFT)
         self.view.set_title(str(self.main_mode).replace('_', ' ').title() + ':', self.view.Columns.MIDDLE)
         self.view.set_title(self.OutputLabels[str(self.main_mode)] + ':', self.view.Columns.RIGHT)
+        self.view.set_footer(self.filter_string)
 
 
 def main(args=None):

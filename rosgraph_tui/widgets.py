@@ -74,7 +74,7 @@ class PaddedListFrame(urwid.Padding):
     def __init__(self, title, choices):
         self.header = urwid.Pile([('pack', urwid.Text(('header', title))), ('pack', urwid.Divider())])
         self.list = List(choices)
-        self.footer = urwid.Pile([('pack', urwid.Divider()), ('pack', urwid.Text(('footer', "FOOOTER")))])
+        self.footer = urwid.Pile([('pack', urwid.Divider()), ('pack', urwid.Text(('footer', '')))])
 
         body = urwid.Frame(self.list, self.header, self.footer)
         super(PaddedListFrame, self).__init__(body, left=2, right=2)
@@ -85,6 +85,9 @@ class PaddedListFrame(urwid.Padding):
 
     def set_title(self, title):
         self.header[0].set_text(('header', title))
+
+    def set_footer(self, footer):
+        self.footer[1].set_text(('footer', footer))
 
     def reset_list(self, choices):
         self.list.reset_list(choices)
@@ -113,6 +116,9 @@ class ListColumn(urwid.Columns):
             self.column_middle.set_title(title)
         elif column == self.Columns.RIGHT:
             self.column_right.set_title(title)
+
+    def set_footer(self, footer):
+        self.column_middle.set_footer(footer)
 
     def reset_list(self, choices, column):
         if column == self.Columns.LEFT:

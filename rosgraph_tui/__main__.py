@@ -1,5 +1,6 @@
 from enum import Enum
 import sys
+import signal
 
 import urwid
 
@@ -203,8 +204,13 @@ class Controller:
         self.view.set_footer(self.filter_string)
 
 
+def sigint_handler(sig, frame):
+    raise urwid.ExitMainLoop()
+
+
 def main(args=None):
     """The main routine."""
+    signal.signal(signal.SIGINT, sigint_handler)
     c = Controller()
     c.run()
 

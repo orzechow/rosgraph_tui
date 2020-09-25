@@ -26,10 +26,10 @@ class Model:
         if items:
             if item_type == self.ListEntryTypes.NODE:
                 for item in items:
-                    list.append(NodeModel(item))
+                    list.append(NodeModel(item, self.graph))
             elif item_type == self.ListEntryTypes.TOPIC:
                 for item in items:
-                    list.append(TopicModel(item))
+                    list.append(TopicModel(item, self.graph))
             else:
                 raise TypeError("list entry is neither node nor topic: " + str(item_type))
 
@@ -47,13 +47,20 @@ class Model:
 
 
 class NodeModel:
-    def __init__(self, name):
+    def __init__(self, name, graph):
         self.name = name
+
+    def info_string(self):
+        return ''
 
 
 class TopicModel:
-    def __init__(self, name):
+    def __init__(self, name, graph):
         self.name = name
+        self.topic_type = graph.topic_type(name)
+
+    def info_string(self):
+        return 'Type: ' + self.topic_type
 
 
 class GraphModel:

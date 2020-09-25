@@ -34,8 +34,8 @@ class MainView:
     def set_title(self, title, column):
         self.main_widget.set_title(title, column)
 
-    def set_footer(self, footer):
-        self.main_widget.set_footer(footer)
+    def set_footer(self, footer, column):
+        self.main_widget.set_footer(footer, column)
 
     def set_focus(self, column):
         self.main_widget.set_focus(column.index)

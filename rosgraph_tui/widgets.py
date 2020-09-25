@@ -133,8 +133,13 @@ class ListColumn(urwid.Columns):
         elif column == self.Columns.RIGHT:
             self.column_right.set_title(title)
 
-    def set_footer(self, footer):
-        self.column_middle.set_footer(footer)
+    def set_footer(self, footer, column):
+        if column == self.Columns.LEFT:
+            self.column_left.set_footer(footer)
+        elif column == self.Columns.MIDDLE:
+            self.column_middle.set_footer(footer)
+        elif column == self.Columns.RIGHT:
+            self.column_right.set_footer(footer)
 
     def reset_list(self, choices, column):
         if column == self.Columns.LEFT:

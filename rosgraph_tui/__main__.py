@@ -201,7 +201,7 @@ class Controller:
         self.view.set_title(self.InputLabels[str(self.main_mode)] + ':', self.view.Columns.LEFT)
         self.view.set_title(str(self.main_mode).replace('_', ' ').title() + ':', self.view.Columns.MIDDLE)
         self.view.set_title(self.OutputLabels[str(self.main_mode)] + ':', self.view.Columns.RIGHT)
-        self.view.set_footer(self.filter_string)
+        self.view.set_footer(self.filter_string, self.view.Columns.MIDDLE)
 
 
 def sigint_handler(sig, frame):

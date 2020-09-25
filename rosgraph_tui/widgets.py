@@ -82,6 +82,8 @@ class PaddedListFrame(urwid.Padding):
     def get_selection(self):
         if self.original_widget.body.focus:
             return self.original_widget.body.focus.base_widget.text
+        else:
+            return None
 
     def set_title(self, title):
         self.header[0].set_text(('header', title))
@@ -108,6 +110,20 @@ class ListColumn(urwid.Columns):
     def get_selection(self):
         if self.focus:
             return self.focus.get_selection()
+        else:
+            None
+
+    def get_selection_index(self):
+        if self.focus and self.focus.base_widget.body.focus:
+            return self.focus.base_widget.body.focus_position
+        else:
+            None
+
+    def get_selected_column(self):
+        if self.focus:
+            return self.focus_col
+        else:
+            None
 
     def set_title(self, title, column):
         if column == self.Columns.LEFT:

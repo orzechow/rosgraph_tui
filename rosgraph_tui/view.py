@@ -25,6 +25,12 @@ class MainView:
     def get_selection(self):
         return self.main_widget.get_selection()
 
+    def get_selection_index(self):
+        return self.main_widget.get_selection_index()
+
+    def get_selected_column(self):
+        return self.main_widget.get_selected_column()
+
     def set_title(self, title, column):
         self.main_widget.set_title(title, column)
 

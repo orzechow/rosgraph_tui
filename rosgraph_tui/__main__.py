@@ -76,7 +76,7 @@ class Controller:
                 self.handle_choice(None, None, selection, self.view.Columns.RIGHT)
 
     def update_filter(self, key):
-        if key in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_/':
+        if isinstance(key, str) and key in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_/':
             self.filter_string = self.filter_string + key
             return True
         elif key == 'backspace':

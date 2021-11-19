@@ -3,6 +3,9 @@ import sys
 import signal
 
 import urwid
+from click import secho
+
+from rosnode import ROSNodeIOException
 
 import model
 import view
@@ -16,7 +19,17 @@ class Controller:
     def __init__(self):
         self.main_mode = self.Modes.NODES_AND_TOPICS
 
-        self.model = model.Model()
+        try:
+            self.model = model.Model()
+        except ROSNodeIOException:
+            secho("Failed to connect to ROS! "
+                  "Please launch your stack before running rosgraph_tui", fg='red')
+            exit()
+
+        if self.model.main_list.count == 0:
+            secho("No nodes and topics found! "
+                  "Please launch your stack before running rosgraph_tui", fg='red')
+            exit()
 
         self.view = view.MainView([], [], [])
         self.view.set_focus(self.view.Columns.MIDDLE)

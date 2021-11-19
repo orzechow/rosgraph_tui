@@ -107,6 +107,7 @@ class PaddedListFrame(urwid.Padding):
 
 
 class ListColumn(urwid.Columns):
+    signals = ["keypress"]
 
     class Columns(Enum):
         LEFT = 0
@@ -120,6 +121,11 @@ class ListColumn(urwid.Columns):
 
         body = [self.column_left] + [self.column_middle] + [self.column_right]
         super(ListColumn, self).__init__(body)
+
+    def keypress(self, size, key):
+        previously_selected_column = self.get_selected_column()
+        super(ListColumn, self).keypress(size, key)
+        self._emit('keypress', key, previously_selected_column)
 
     def get_selection(self):
         if self.focus:

@@ -21,6 +21,7 @@ class Model:
             topics_from_names(self.graph, self.graph.get_topics())
         self.output_list = []
         self.filter_string = ''
+        self.choice = ''
 
     def set_main_list(self, items):
         self.main_list = items

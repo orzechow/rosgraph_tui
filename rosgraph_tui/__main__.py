@@ -43,8 +43,6 @@ class Controller:
         self.view = view.MainView([], [], [])
         self.view.set_focus(self.view.Columns.MIDDLE)
 
-        self.choice = ''
-
         self.update_view()
 
         urwid.connect_signal(self.view.main_widget.column_left.list, 'choice', self.handle_choice,
@@ -134,7 +132,7 @@ class Controller:
         self.model.set_output_list(choice.get_output())
 
     def handle_choice(self, list, button, choice, column):
-        self.choice = choice
+        self.model.choice = choice
         self.handle_main_choice(choice)
         if column == self.view.Columns.LEFT or column == self.view.Columns.RIGHT:
             pass
@@ -158,12 +156,12 @@ class Controller:
 
     def append_style(self, node_or_topic):
         if isinstance(node_or_topic, model.NodeModel):
-            if node_or_topic.name == self.choice:
+            if node_or_topic.name == self.model.choice:
                 return 'chosen_node', node_or_topic
             else:
                 return 'node', node_or_topic
         elif isinstance(node_or_topic, model.TopicModel):
-            if node_or_topic.name == self.choice:
+            if node_or_topic.name == self.model.choice:
                 return 'chosen_topic', node_or_topic
             else:
                 return 'topic', node_or_topic

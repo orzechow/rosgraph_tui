@@ -8,15 +8,11 @@ from click import secho
 from rosnode import ROSNodeIOException
 
 from rosgraph_tui import model
+from rosgraph_tui.model import Modes
 from rosgraph_tui import view
 
 
 class Controller:
-
-    class Modes(Enum):
-        NODES_AND_TOPICS = 0
-        NODES = 1
-        TOPICS = 2
 
     InputLabels = {'Modes.NODES_AND_TOPICS': 'Input',
                    'Modes.NODES': 'Subscriptions', 'Modes.TOPICS': 'Publishers'}
@@ -26,8 +22,6 @@ class Controller:
                     'Modes.NODES': 'Publications', 'Modes.TOPICS': 'Subscribers'}
 
     def __init__(self):
-        self.main_mode = self.Modes.NODES_AND_TOPICS
-
         try:
             self.model = model.Model()
         except ROSNodeIOException:
@@ -66,14 +60,14 @@ class Controller:
             if self.model.filter_string != '':
                 self.model.filter_string = ''
 
-            if self.main_mode == self.Modes.NODES and (is_item_selected or is_filter_active):
+            if self.model.main_mode == Modes.NODES and (is_item_selected or is_filter_active):
                 self.model.set_main_list(
                     self.model.graph.get_node_models(self.model.filter_string))
-            elif self.main_mode == self.Modes.TOPICS and (is_item_selected or is_filter_active):
+            elif self.model.main_mode == Modes.TOPICS and (is_item_selected or is_filter_active):
                 self.model.set_main_list(
                     self.model.graph.get_topic_models(self.model.filter_string))
-            elif self.main_mode != self.Modes.NODES_AND_TOPICS or is_filter_active:
-                self.main_mode = self.Modes.NODES_AND_TOPICS
+            elif self.model.main_mode != Modes.NODES_AND_TOPICS or is_filter_active:
+                self.model.main_mode = Modes.NODES_AND_TOPICS
                 self.model.set_main_list(self.model.graph.get_node_models(self.model.filter_string) +
                                          self.model.graph.get_topic_models(self.model.filter_string))
                 self.model.set_input_list([])
@@ -109,13 +103,13 @@ class Controller:
         self.show_all_or_exit_on_esc(key)
         self.choose_on_arrow_out_of_view(key)
         if self.update_filter(key):
-            if self.main_mode == self.Modes.NODES:
+            if self.model.main_mode == Modes.NODES:
                 self.model.set_main_list(
                     self.model.graph.get_node_models(self.model.filter_string))
-            if self.main_mode == self.Modes.TOPICS:
+            if self.model.main_mode == Modes.TOPICS:
                 self.model.set_main_list(
                     self.model.graph.get_topic_models(self.model.filter_string))
-            elif self.main_mode == self.Modes.NODES_AND_TOPICS:
+            elif self.model.main_mode == Modes.NODES_AND_TOPICS:
                 self.model.set_main_list(self.model.graph.get_node_models(self.model.filter_string) +
                                          self.model.graph.get_topic_models(self.model.filter_string))
             else:
@@ -147,9 +141,9 @@ class Controller:
     def switch_mode(self):
         selection = self.view.get_selection()
         if isinstance(selection, model.NodeModel):
-            self.main_mode = self.Modes.NODES
+            self.model.main_mode = Modes.NODES
         elif isinstance(selection, model.TopicModel):
-            self.main_mode = self.Modes.TOPICS
+            self.model.main_mode = Modes.TOPICS
         else:
             raise RuntimeError(
                 "current selection is neither node nor topic item!")
@@ -181,11 +175,11 @@ class Controller:
         self.view.reset_list(nodes_and_topics, self.view.Columns.MIDDLE)
         self.view.reset_list(outputs, self.view.Columns.RIGHT)
         self.view.set_title(self.InputLabels[str(
-            self.main_mode)] + ':', self.view.Columns.LEFT)
+            self.model.main_mode)] + ':', self.view.Columns.LEFT)
         self.view.set_title(self.MiddleLabels[str(
-            self.main_mode)] + ':', self.view.Columns.MIDDLE)
+            self.model.main_mode)] + ':', self.view.Columns.MIDDLE)
         self.view.set_title(self.OutputLabels[str(
-            self.main_mode)] + ':', self.view.Columns.RIGHT)
+            self.model.main_mode)] + ':', self.view.Columns.RIGHT)
         self.view.set_footer(self.model.filter_string,
                              self.view.Columns.MIDDLE)
 

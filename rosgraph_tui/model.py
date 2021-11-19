@@ -12,9 +12,17 @@ class ListEntryTypes(Enum):
     TOPIC = 1
 
 
+class Modes(Enum):
+    NODES_AND_TOPICS = 0
+    NODES = 1
+    TOPICS = 2
+
+
 class Model:
     def __init__(self):
         self.graph = GraphModel()
+
+        self.main_mode = Modes.NODES_AND_TOPICS
 
         self.input_list = []
         self.main_list = nodes_from_names(self.graph, self.graph.get_nodes()) + \

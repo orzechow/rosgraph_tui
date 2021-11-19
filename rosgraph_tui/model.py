@@ -20,6 +20,7 @@ class Model:
         self.main_list = nodes_from_names(self.graph, self.graph.get_nodes()) + \
             topics_from_names(self.graph, self.graph.get_topics())
         self.output_list = []
+        self.filter_string = ''
 
     def set_main_list(self, items):
         self.main_list = items

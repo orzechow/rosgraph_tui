@@ -43,7 +43,6 @@ class Controller:
         self.view = view.MainView([], [], [])
         self.view.set_focus(self.view.Columns.MIDDLE)
 
-        self.filter_string = ''
         self.choice = ''
 
         self.update_view()
@@ -64,21 +63,21 @@ class Controller:
     def show_all_or_exit_on_esc(self, key):
         if key == 'esc':
             is_item_selected = len(self.model.main_list) == 1
-            is_filter_active = len(self.filter_string) > 0
+            is_filter_active = len(self.model.filter_string) > 0
 
-            if self.filter_string != '':
-                self.filter_string = ''
+            if self.model.filter_string != '':
+                self.model.filter_string = ''
 
             if self.main_mode == self.Modes.NODES and (is_item_selected or is_filter_active):
                 self.model.set_main_list(
-                    self.model.graph.get_node_models(self.filter_string))
+                    self.model.graph.get_node_models(self.model.filter_string))
             elif self.main_mode == self.Modes.TOPICS and (is_item_selected or is_filter_active):
                 self.model.set_main_list(
-                    self.model.graph.get_topic_models(self.filter_string))
+                    self.model.graph.get_topic_models(self.model.filter_string))
             elif self.main_mode != self.Modes.NODES_AND_TOPICS or is_filter_active:
                 self.main_mode = self.Modes.NODES_AND_TOPICS
-                self.model.set_main_list(self.model.graph.get_node_models(self.filter_string) +
-                                         self.model.graph.get_topic_models(self.filter_string))
+                self.model.set_main_list(self.model.graph.get_node_models(self.model.filter_string) +
+                                         self.model.graph.get_topic_models(self.model.filter_string))
                 self.model.set_input_list([])
                 self.model.set_output_list([])
             else:
@@ -91,18 +90,20 @@ class Controller:
         if key == 'left':
             selection = self.view.get_selection()
             if selection:
-                self.handle_choice(None, None, selection, self.view.Columns.LEFT)
+                self.handle_choice(None, None, selection,
+                                   self.view.Columns.LEFT)
         elif key == 'right':
             selection = self.view.get_selection()
             if selection:
-                self.handle_choice(None, None, selection, self.view.Columns.RIGHT)
+                self.handle_choice(None, None, selection,
+                                   self.view.Columns.RIGHT)
 
     def update_filter(self, key):
         if isinstance(key, str) and key in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_/':
-            self.filter_string = self.filter_string + key
+            self.model.filter_string = self.model.filter_string + key
             return True
         elif key == 'backspace':
-            self.filter_string = self.filter_string[:-1]
+            self.model.filter_string = self.model.filter_string[:-1]
             return True
         return False
 
@@ -112,13 +113,13 @@ class Controller:
         if self.update_filter(key):
             if self.main_mode == self.Modes.NODES:
                 self.model.set_main_list(
-                    self.model.graph.get_node_models(self.filter_string))
+                    self.model.graph.get_node_models(self.model.filter_string))
             if self.main_mode == self.Modes.TOPICS:
                 self.model.set_main_list(
-                    self.model.graph.get_topic_models(self.filter_string))
+                    self.model.graph.get_topic_models(self.model.filter_string))
             elif self.main_mode == self.Modes.NODES_AND_TOPICS:
-                self.model.set_main_list(self.model.graph.get_node_models(self.filter_string) +
-                                         self.model.graph.get_topic_models(self.filter_string))
+                self.model.set_main_list(self.model.graph.get_node_models(self.model.filter_string) +
+                                         self.model.graph.get_topic_models(self.model.filter_string))
             else:
                 raise urwid.ExitMainLoop()
 
@@ -141,7 +142,7 @@ class Controller:
             raise TypeError("column is neither left, right nor middle!")
         self.switch_mode()
 
-        self.filter_string = ''
+        self.model.filter_string = ''
         self.update_view()
         self.view.set_focus(self.view.Columns.MIDDLE)
 
@@ -187,7 +188,8 @@ class Controller:
             self.main_mode)] + ':', self.view.Columns.MIDDLE)
         self.view.set_title(self.OutputLabels[str(
             self.main_mode)] + ':', self.view.Columns.RIGHT)
-        self.view.set_footer(self.filter_string, self.view.Columns.MIDDLE)
+        self.view.set_footer(self.model.filter_string,
+                             self.view.Columns.MIDDLE)
 
 
 def sigint_handler(sig, frame):

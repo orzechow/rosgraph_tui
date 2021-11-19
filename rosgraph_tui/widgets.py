@@ -33,7 +33,7 @@ class ListEntry(urwid.Text):
 
 
 class List(urwid.ListBox):
-    signals = ["choice"]
+    signals = ["choice", "modified"]
 
     def sizing(self):
         return frozenset([urwid.FIXED])
@@ -45,6 +45,10 @@ class List(urwid.ListBox):
     def reset_widget(self):
         super(List, self).__init__(
             urwid.SimpleFocusListWalker(self.choices_widgets))
+        urwid.connect_signal(self.body, 'modified', self.modified_callback)
+
+    def modified_callback(self):
+        self._emit('modified')
 
     def set_choices(self, choices):
         self.choices_widgets = []

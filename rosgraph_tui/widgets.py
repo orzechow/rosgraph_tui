@@ -1,4 +1,5 @@
 from enum import Enum
+
 import urwid
 
 
@@ -97,7 +98,10 @@ class PaddedListFrame(urwid.Padding):
 
 class ListColumn(urwid.Columns):
 
-    Columns = Enum('LEFT', 'MIDDLE', 'RIGHT')
+    class Columns(Enum):
+        LEFT = 0
+        MIDDLE = 1
+        RIGHT = 2
 
     def __init__(self, choices_left, choices_middle, choices_right):
         self.column_left = PaddedListFrame(u"Input:", choices_left)

@@ -7,14 +7,21 @@ from click import secho
 
 from rosnode import ROSNodeIOException
 
-import model
-import view
+from rosgraph_tui import model
+from rosgraph_tui import view
 
 
 class Controller:
-    Modes = Enum('NODES_AND_TOPICS', 'NODES', 'TOPICS')
-    InputLabels = {'NODES_AND_TOPICS': 'Input', 'NODES': 'Subscriptions', 'TOPICS': 'Publishers'}
-    OutputLabels = {'NODES_AND_TOPICS': 'Output', 'NODES': 'Publications', 'TOPICS': 'Subscribers'}
+
+    class Modes(Enum):
+        NODES_AND_TOPICS = 0
+        NODES = 1
+        TOPICS = 2
+
+    InputLabels = {'Modes.NODES_AND_TOPICS': 'Input',
+                   'Modes.NODES': 'Subscriptions', 'Modes.TOPICS': 'Publishers'}
+    OutputLabels = {'Modes.NODES_AND_TOPICS': 'Output',
+                    'Modes.NODES': 'Publications', 'Modes.TOPICS': 'Subscribers'}
 
     def __init__(self):
         self.main_mode = self.Modes.NODES_AND_TOPICS

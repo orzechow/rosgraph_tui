@@ -1,6 +1,6 @@
 import urwid
 
-import widgets
+from rosgraph_tui import widgets
 
 
 class MainView:
@@ -38,7 +38,7 @@ class MainView:
         self.main_widget.set_footer(footer, column)
 
     def set_focus(self, column):
-        self.main_widget.set_focus(column.index)
+        self.main_widget.set_focus(column.value)
 
     def reset_list(self, choices, column):
         self.main_widget.reset_list(choices, column)

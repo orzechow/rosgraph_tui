@@ -7,9 +7,12 @@ import rosgraph
 ID = '/rosgraph_tui'
 
 
-class Model:
-    ListEntryTypes = Enum('NODE', 'TOPIC')
+class ListEntryTypes(Enum):
+    NODE = 0
+    TOPIC = 1
 
+
+class Model:
     def __init__(self):
         self.graph = GraphModel()
 

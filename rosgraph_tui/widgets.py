@@ -140,25 +140,25 @@ class ListColumn(urwid.Columns):
             None
 
     def set_title(self, title, column):
-        if column == self.Columns.LEFT:
+        if column == self.Columns.LEFT or column == self.Columns.LEFT.value:
             self.column_left.set_title(title)
-        elif column == self.Columns.MIDDLE:
+        elif column == self.Columns.MIDDLE or column == self.Columns.MIDDLE.value:
             self.column_middle.set_title(title)
-        elif column == self.Columns.RIGHT:
+        elif column == self.Columns.RIGHT or column == self.Columns.RIGHT.value:
             self.column_right.set_title(title)
 
     def set_footer(self, footer, column):
-        if column == self.Columns.LEFT:
+        if column == self.Columns.LEFT or column == self.Columns.LEFT.value:
             self.column_left.set_footer(footer)
-        elif column == self.Columns.MIDDLE:
+        elif column == self.Columns.MIDDLE or column == self.Columns.MIDDLE.value:
             self.column_middle.set_footer(footer)
-        elif column == self.Columns.RIGHT:
+        elif column == self.Columns.RIGHT or column == self.Columns.RIGHT.value:
             self.column_right.set_footer(footer)
 
     def reset_list(self, choices, column):
-        if column == self.Columns.LEFT:
+        if column == self.Columns.LEFT or column == self.Columns.LEFT.value:
             self.column_left.reset_list(choices)
-        elif column == self.Columns.MIDDLE:
+        elif column == self.Columns.MIDDLE or column == self.Columns.MIDDLE.value:
             self.column_middle.reset_list(choices)
-        elif column == self.Columns.RIGHT:
+        elif column == self.Columns.RIGHT or column == self.Columns.RIGHT.value:
             self.column_right.reset_list(choices)

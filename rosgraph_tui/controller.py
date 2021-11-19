@@ -184,20 +184,20 @@ class Controller:
                              self.view.Columns.MIDDLE)
 
     def update_view(self):
-        nodes_and_topics = [node for node in self.model.main_list]
-        nodes_and_topics = [self.append_style(
-            item) for item in nodes_and_topics]
-
+        nodes_and_topics = \
+            [self.append_style(item) for item in self.model.main_list]
         inputs = [self.append_style(item) for item in self.model.input_list]
         outputs = [self.append_style(item) for item in self.model.output_list]
 
         self.view.reset_list(inputs, self.view.Columns.LEFT)
         self.view.reset_list(nodes_and_topics, self.view.Columns.MIDDLE)
         self.view.reset_list(outputs, self.view.Columns.RIGHT)
+
         self.view.set_title(self.InputLabels[str(
             self.model.main_mode)] + ':', self.view.Columns.LEFT)
         self.view.set_title(self.MiddleLabels[str(
             self.model.main_mode)] + ':', self.view.Columns.MIDDLE)
         self.view.set_title(self.OutputLabels[str(
             self.model.main_mode)] + ':', self.view.Columns.RIGHT)
+
         self.update_footer()

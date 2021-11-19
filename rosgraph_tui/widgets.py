@@ -8,6 +8,10 @@ class ListEntry(urwid.Text):
 
     signals = ["click"]
 
+    def __init__(self, item):
+        self.original_item = item
+        super(ListEntry, self).__init__(item.name_string())
+
     def keypress(self, size, key):
         """
         Send 'click' signal on 'activate' command.
@@ -35,25 +39,29 @@ class List(urwid.ListBox):
         return frozenset([urwid.FIXED])
 
     def __init__(self, choices):
-        self.choices_list = []
+        self.choices_widgets = []
         self.set_choices(choices)
 
     def reset_widget(self):
-        super(List, self).__init__(urwid.SimpleFocusListWalker(self.choices_list))
+        super(List, self).__init__(
+            urwid.SimpleFocusListWalker(self.choices_widgets))
 
     def set_choices(self, choices):
-        self.choices_list = []
-        for style, text in choices:
-            button = ListEntry(text)
-            urwid.connect_signal(button, 'click', self.item_chosen, text)
-            self.choices_list.append(urwid.AttrMap(button, style, focus_map='reversed'))
+        self.choices_widgets = []
+        for style, item in choices:
+            button = ListEntry(item)
+            urwid.connect_signal(button, 'click', self.item_chosen, item)
+            self.choices_widgets.append(urwid.AttrMap(
+                button, style, focus_map='reversed'))
         self.reset_widget()
 
     def reset_list(self, choices):
+        choices_names = [item[1].name_string() for item in choices]
         focus = self.focus
         if focus:
-            if focus.original_widget.get_text() in choices:
-                focus_position = choices.index(focus.original_widget.get_text())
+            if focus.original_widget.get_text() in choices_names:
+                focus_position = choices_names.index(
+                    focus.original_widget.get_text())
             else:
                 focus_position = self.focus_position
                 focus_position = max(0, min(focus_position, len(choices) - 1))
@@ -73,16 +81,18 @@ class PaddedListFrame(urwid.Padding):
         return frozenset([urwid.FIXED])
 
     def __init__(self, title, choices):
-        self.header = urwid.Pile([('pack', urwid.Text(('header', title))), ('pack', urwid.Divider())])
+        self.header = urwid.Pile(
+            [('pack', urwid.Text(('header', title))), ('pack', urwid.Divider())])
         self.list = List(choices)
-        self.footer = urwid.Pile([('pack', urwid.Divider()), ('pack', urwid.Text(('footer', '')))])
+        self.footer = urwid.Pile(
+            [('pack', urwid.Divider()), ('pack', urwid.Text(('footer', '')))])
 
         body = urwid.Frame(self.list, self.header, self.footer)
         super(PaddedListFrame, self).__init__(body, left=2, right=2)
 
     def get_selection(self):
         if self.original_widget.body.focus:
-            return self.original_widget.body.focus.base_widget.text
+            return self.original_widget.body.focus.base_widget.original_item
         else:
             return None
 

@@ -20,6 +20,8 @@ class Controller:
 
     InputLabels = {'Modes.NODES_AND_TOPICS': 'Input',
                    'Modes.NODES': 'Subscriptions', 'Modes.TOPICS': 'Publishers'}
+    MiddleLabels = {'Modes.NODES_AND_TOPICS': 'Nodes and Topics',
+                    'Modes.NODES': 'Nodes', 'Modes.TOPICS': 'Topics'}
     OutputLabels = {'Modes.NODES_AND_TOPICS': 'Output',
                     'Modes.NODES': 'Publications', 'Modes.TOPICS': 'Subscribers'}
 
@@ -43,7 +45,6 @@ class Controller:
 
         self.filter_string = ''
         self.choice = ''
-        self.choice_type = self.model.ListEntryTypes.NODE
 
         self.update_view()
 
@@ -54,29 +55,30 @@ class Controller:
         urwid.connect_signal(self.view.main_widget.column_right.list, 'choice', self.handle_choice,
                              self.view.Columns.RIGHT)
 
-        self.loop = urwid.MainLoop(self.view.main_widget_with_attr, self.view.palette, unhandled_input=self.handle_input)
+        self.loop = urwid.MainLoop(
+            self.view.main_widget_with_attr, self.view.palette, unhandled_input=self.handle_input)
 
     def run(self):
         self.loop.run()
 
     def show_all_or_exit_on_esc(self, key):
         if key == 'esc':
-            is_node_selected = len(self.model.main_node_list) == 1
-            is_topic_selected = len(self.model.main_topic_list) == 1
-            is_node_filter_active = len(self.model.main_node_list) != len(self.model.graph.get_nodes())
-            is_topic_filter_active = len(self.model.main_topic_list) != len(self.model.graph.get_topics())
+            is_item_selected = len(self.model.main_list) == 1
+            is_filter_active = len(self.filter_string) > 0
 
             if self.filter_string != '':
                 self.filter_string = ''
 
-            if self.main_mode == self.Modes.NODES and (is_node_selected or is_node_filter_active):
-                self.model.set_main_node_list(self.model.graph.get_nodes(self.filter_string))
-            elif self.main_mode == self.Modes.TOPICS and (is_topic_selected or is_topic_filter_active):
-                self.model.set_main_topic_list(self.model.graph.get_topics(self.filter_string))
-            elif is_node_filter_active or is_topic_filter_active:
+            if self.main_mode == self.Modes.NODES and (is_item_selected or is_filter_active):
+                self.model.set_main_list(
+                    self.model.graph.get_node_models(self.filter_string))
+            elif self.main_mode == self.Modes.TOPICS and (is_item_selected or is_filter_active):
+                self.model.set_main_list(
+                    self.model.graph.get_topic_models(self.filter_string))
+            elif self.main_mode != self.Modes.NODES_AND_TOPICS or is_filter_active:
                 self.main_mode = self.Modes.NODES_AND_TOPICS
-                self.model.set_main_node_list(self.model.graph.get_nodes(self.filter_string))
-                self.model.set_main_topic_list(self.model.graph.get_topics(self.filter_string))
+                self.model.set_main_list(self.model.graph.get_node_models(self.filter_string) +
+                                         self.model.graph.get_topic_models(self.filter_string))
                 self.model.set_input_list([])
                 self.model.set_output_list([])
             else:
@@ -108,119 +110,83 @@ class Controller:
         self.show_all_or_exit_on_esc(key)
         self.choose_on_arrow_out_of_view(key)
         if self.update_filter(key):
-            if self.main_mode == self.Modes.NODES or self.main_mode == self.Modes.NODES_AND_TOPICS:
-                self.model.set_main_node_list(self.model.graph.get_nodes(self.filter_string))
-            if self.main_mode == self.Modes.TOPICS or self.main_mode == self.Modes.NODES_AND_TOPICS:
-                self.model.set_main_topic_list(self.model.graph.get_topics(self.filter_string))
-            self.view.main_widget.set_focus_column(self.view.Columns.MIDDLE.index)
+            if self.main_mode == self.Modes.NODES:
+                self.model.set_main_list(
+                    self.model.graph.get_node_models(self.filter_string))
+            if self.main_mode == self.Modes.TOPICS:
+                self.model.set_main_list(
+                    self.model.graph.get_topic_models(self.filter_string))
+            elif self.main_mode == self.Modes.NODES_AND_TOPICS:
+                self.model.set_main_list(self.model.graph.get_node_models(self.filter_string) +
+                                         self.model.graph.get_topic_models(self.filter_string))
+            else:
+                raise urwid.ExitMainLoop()
+
+            self.view.main_widget.set_focus_column(
+                self.view.Columns.MIDDLE.value)
             self.update_view()
-
-    def handle_node_choice(self, node):
-        self.model.set_main_node_list([node])
-        self.model.set_main_topic_list([])
-        self.model.set_input_list(self.model.graph.get_subscriptions(node), self.model.ListEntryTypes.TOPIC)
-        self.model.set_output_list(self.model.graph.get_publications(node), self.model.ListEntryTypes.TOPIC)
-
-    def handle_topic_choice(self, topic):
-        self.model.set_main_node_list([topic])
-        self.model.set_main_topic_list([])
-        self.model.set_input_list(self.model.graph.get_publishers(topic), self.model.ListEntryTypes.NODE)
-        self.model.set_output_list(self.model.graph.get_subscribers(topic), self.model.ListEntryTypes.NODE)
-
-    def handle_input_output_choice(self, choice):
-        if self.main_mode == self.Modes.NODES:
-            self.handle_topic_choice(choice)
-        elif self.main_mode == self.Modes.TOPICS:
-            self.handle_node_choice(choice)
-        else:
-            raise RuntimeError("choice from left or right list should not be possible in NODES_AND_TOPICS mode!")
+        pass
 
     def handle_main_choice(self, choice):
-        if self.main_mode == self.Modes.NODES:
-            self.handle_node_choice(choice)
-        elif self.main_mode == self.Modes.TOPICS:
-            self.handle_topic_choice(choice)
-        else:
-            choice_name, choice_type = self.get_list_entry(choice)
-            self.choice = choice_name
-            if choice_type == self.model.ListEntryTypes.NODE:
-                self.main_mode = self.Modes.NODES
-                self.handle_node_choice(choice_name)
-            elif choice_type == self.model.ListEntryTypes.TOPIC:
-                self.main_mode = self.Modes.TOPICS
-                self.handle_topic_choice(choice_name)
-            else:
-                raise TypeError("choice is neither node nor topic: " + choice)
+        self.model.set_main_list([choice])
+        self.model.set_input_list(choice.get_input())
+        self.model.set_output_list(choice.get_output())
 
     def handle_choice(self, list, button, choice, column):
         self.choice = choice
+        self.handle_main_choice(choice)
         if column == self.view.Columns.LEFT or column == self.view.Columns.RIGHT:
-            self.handle_input_output_choice(choice)
-            self.switch_mode()
-        elif column == self.view.Columns.MIDDLE:
-            self.handle_main_choice(choice)
-        else:
+            pass
+        elif column != self.view.Columns.MIDDLE:
             raise TypeError("column is neither left, right nor middle!")
+        self.switch_mode()
 
         self.filter_string = ''
         self.update_view()
         self.view.set_focus(self.view.Columns.MIDDLE)
 
     def switch_mode(self):
-        if self.main_mode == self.Modes.NODES:
-            self.main_mode = self.Modes.TOPICS
-        elif self.main_mode == self.Modes.TOPICS:
+        selection = self.view.get_selection()
+        if isinstance(selection, model.NodeModel):
             self.main_mode = self.Modes.NODES
+        elif isinstance(selection, model.TopicModel):
+            self.main_mode = self.Modes.TOPICS
         else:
-            raise RuntimeError("switch_mode() should not be called in NODES_AND_TOPICS mode!")
+            raise RuntimeError(
+                "current selection is neither node nor topic item!")
 
-    def get_list_entry(self, list_entry):
-        if self.main_mode == self.Modes.NODES_AND_TOPICS:
-            if "N " in list_entry:
-                return list_entry[2:], self.model.ListEntryTypes.NODE
-            elif "T " in list_entry:
-                return list_entry[2:], self.model.ListEntryTypes.TOPIC
+    def append_style(self, node_or_topic):
+        if isinstance(node_or_topic, model.NodeModel):
+            if node_or_topic.name == self.choice:
+                return 'chosen_node', node_or_topic
             else:
-                raise TypeError("list entry is neither node nor topic: " + list_entry)
+                return 'node', node_or_topic
+        elif isinstance(node_or_topic, model.TopicModel):
+            if node_or_topic.name == self.choice:
+                return 'chosen_topic', node_or_topic
+            else:
+                return 'topic', node_or_topic
         else:
-            raise RuntimeError("get_list_entry() should only be called in NODES_AND_TOPICS mode, but mode is: " + str(self.main_mode))
-
-    def generate_node_style(self, name):
-        if name == self.choice:
-            return 'chosen_node', name
-        else:
-            return 'node', name
-
-    def generate_topic_style(self, name):
-        if name == self.choice:
-            return 'chosen_topic', name
-        else:
-            return 'topic', name
+            raise TypeError(
+                "list entry is neither node nor topic: ", node_or_topic)
 
     def update_view(self):
-        if self.main_mode == self.Modes.NODES_AND_TOPICS:
-            nodes = ["N " + node.name for node in self.model.main_node_list]
-            topics = ["T " + node.name for node in self.model.main_topic_list]
-        else:
-            nodes = [node.name for node in self.model.main_node_list]
-            topics = [node.name for node in self.model.main_topic_list]
+        nodes_and_topics = [node for node in self.model.main_list]
+        nodes_and_topics = [self.append_style(
+            item) for item in nodes_and_topics]
 
-        nodes = [self.generate_node_style(name) for name in nodes]
-        topics = [self.generate_topic_style(name) for name in topics]
+        inputs = [self.append_style(item) for item in self.model.input_list]
+        outputs = [self.append_style(item) for item in self.model.output_list]
 
-        if self.main_mode == self.Modes.NODES:
-            input = [self.generate_topic_style(item.name) for item in self.model.input_list]
-            output = [self.generate_topic_style(item.name) for item in self.model.output_list]
-        else:
-            input = [self.generate_node_style(item.name) for item in self.model.input_list]
-            output = [self.generate_node_style(item.name) for item in self.model.output_list]
-
-        self.view.reset_list(input, self.view.Columns.LEFT)
-        self.view.reset_list(nodes + topics, self.view.Columns.MIDDLE)
-        self.view.reset_list(output, self.view.Columns.RIGHT)
-        self.view.set_title(self.InputLabels[str(self.main_mode)] + ':', self.view.Columns.LEFT)
-        self.view.set_title(str(self.main_mode).replace('_', ' ').title() + ':', self.view.Columns.MIDDLE)
-        self.view.set_title(self.OutputLabels[str(self.main_mode)] + ':', self.view.Columns.RIGHT)
+        self.view.reset_list(inputs, self.view.Columns.LEFT)
+        self.view.reset_list(nodes_and_topics, self.view.Columns.MIDDLE)
+        self.view.reset_list(outputs, self.view.Columns.RIGHT)
+        self.view.set_title(self.InputLabels[str(
+            self.main_mode)] + ':', self.view.Columns.LEFT)
+        self.view.set_title(self.MiddleLabels[str(
+            self.main_mode)] + ':', self.view.Columns.MIDDLE)
+        self.view.set_title(self.OutputLabels[str(
+            self.main_mode)] + ':', self.view.Columns.RIGHT)
         self.view.set_footer(self.filter_string, self.view.Columns.MIDDLE)
 
 

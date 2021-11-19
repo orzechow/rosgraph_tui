@@ -152,14 +152,19 @@ class Controller:
             raise RuntimeError(
                 "current selection is neither node nor topic item!")
 
-    def append_style(self, node_or_topic):
+    def append_style(self, node_or_topic, column):
         if isinstance(node_or_topic, model.NodeModel):
             if node_or_topic.name == self.model.choice:
                 return 'chosen_node', node_or_topic
             else:
                 return 'node', node_or_topic
         elif isinstance(node_or_topic, model.TopicModel):
-            if node_or_topic.name == self.model.choice:
+            # highlight unconnected nodes or topics
+            if (column == self.view.Columns.LEFT and not node_or_topic.get_input()) or\
+                    (column == self.view.Columns.RIGHT and not node_or_topic.get_output()) or\
+                    (column == self.view.Columns.MIDDLE and not node_or_topic.get_output() and not node_or_topic.get_output()):
+                return 'unconnected', node_or_topic
+            elif node_or_topic.name == self.model.choice:
                 return 'chosen_topic', node_or_topic
             else:
                 return 'topic', node_or_topic
@@ -184,10 +189,12 @@ class Controller:
                              self.view.Columns.MIDDLE)
 
     def update_view(self):
-        nodes_and_topics = \
-            [self.append_style(item) for item in self.model.main_list]
-        inputs = [self.append_style(item) for item in self.model.input_list]
-        outputs = [self.append_style(item) for item in self.model.output_list]
+        inputs = [self.append_style(item, self.view.Columns.LEFT)
+                  for item in self.model.input_list]
+        nodes_and_topics = [self.append_style(item, self.view.Columns.MIDDLE)
+                            for item in self.model.main_list]
+        outputs = [self.append_style(item, self.view.Columns.RIGHT)
+                   for item in self.model.output_list]
 
         self.view.reset_list(inputs, self.view.Columns.LEFT)
         self.view.reset_list(nodes_and_topics, self.view.Columns.MIDDLE)

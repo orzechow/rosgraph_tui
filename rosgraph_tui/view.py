@@ -17,6 +17,7 @@ class MainView:
             ('topic', 'dark cyan', 'black'),
             ('chosen_node', 'light gray,bold', 'black'),
             ('chosen_topic', 'dark cyan,bold', 'black'),
+            ('unconnected', 'dark red', 'black'),
             ('reversed', 'bold', '')]
 
         self.main_widget = widgets.ListColumn(choices_left, choices_middle, choices_right)

@@ -42,8 +42,15 @@ class Controller:
         urwid.connect_signal(self.view.main_widget.column_right.list, 'choice', self.handle_choice,
                              self.view.Columns.RIGHT)
 
+        urwid.connect_signal(self.view.main_widget,
+                             'keypress', self.handle_column_keypress)
+        urwid.connect_signal(self.view.main_widget.column_left.list,
+                             'modified', self.update_footer_on_row_selection)
+        urwid.connect_signal(self.view.main_widget.column_right.list,
+                             'modified', self.update_footer_on_row_selection)
+
         self.loop = urwid.MainLoop(
-            self.view.main_widget_with_attr, self.view.palette, unhandled_input=self.handle_input)
+            self.view.main_widget_with_attr, self.view.palette)
 
     def run(self):
         self.loop.run()
@@ -74,13 +81,13 @@ class Controller:
             self.update_view()
             self.view.set_focus(self.view.Columns.MIDDLE)
 
-    def choose_on_arrow_out_of_view(self, key):
-        if key == 'left':
+    def choose_on_arrow_out_of_view(self, key, previously_selected_column):
+        if key == 'left' and previously_selected_column == self.view.Columns.LEFT.value:
             selection = self.view.get_selection()
             if selection:
                 self.handle_choice(None, None, selection,
                                    self.view.Columns.LEFT)
-        elif key == 'right':
+        elif key == 'right' and previously_selected_column == self.view.Columns.RIGHT.value:
             selection = self.view.get_selection()
             if selection:
                 self.handle_choice(None, None, selection,
@@ -95,9 +102,10 @@ class Controller:
             return True
         return False
 
-    def handle_input(self, key):
+    def handle_column_keypress(self, widget, key, previously_selected_column):
         self.show_all_or_exit_on_esc(key)
-        self.choose_on_arrow_out_of_view(key)
+        self.choose_on_arrow_out_of_view(key, previously_selected_column)
+
         if self.update_filter(key):
             if self.model.main_mode == Modes.NODES:
                 self.model.set_main_list(
@@ -114,7 +122,8 @@ class Controller:
             self.view.main_widget.set_focus_column(
                 self.view.Columns.MIDDLE.value)
             self.update_view()
-        pass
+        else:
+            self.update_footer_on_column_selection(key)
 
     def handle_choice(self, list, button, choice, column):
         self.model.choice = choice
@@ -158,6 +167,22 @@ class Controller:
             raise TypeError(
                 "list entry is neither node nor topic: ", node_or_topic)
 
+    def update_footer_on_column_selection(self, key):
+        self.update_footer()
+
+    def update_footer_on_row_selection(self, list_widget):
+        self.update_footer()
+
+    def update_footer(self):
+        selected_column = self.view.get_selected_column()
+        if selected_column == self.view.Columns.LEFT.value\
+                or selected_column == self.view.Columns.RIGHT.value:
+            selection = self.view.get_selection()
+            if selection:
+                self.view.set_footer(selection.info_string(), selected_column)
+        self.view.set_footer(self.model.filter_string,
+                             self.view.Columns.MIDDLE)
+
     def update_view(self):
         nodes_and_topics = [node for node in self.model.main_list]
         nodes_and_topics = [self.append_style(
@@ -175,5 +200,4 @@ class Controller:
             self.model.main_mode)] + ':', self.view.Columns.MIDDLE)
         self.view.set_title(self.OutputLabels[str(
             self.model.main_mode)] + ':', self.view.Columns.RIGHT)
-        self.view.set_footer(self.model.filter_string,
-                             self.view.Columns.MIDDLE)
+        self.update_footer()

@@ -116,14 +116,13 @@ class Controller:
             self.update_view()
         pass
 
-    def handle_main_choice(self, choice):
+    def handle_choice(self, list, button, choice, column):
+        self.model.choice = choice
+
         self.model.set_main_list([choice])
         self.model.set_input_list(choice.get_input())
         self.model.set_output_list(choice.get_output())
 
-    def handle_choice(self, list, button, choice, column):
-        self.model.choice = choice
-        self.handle_main_choice(choice)
         if column == self.view.Columns.LEFT or column == self.view.Columns.RIGHT:
             pass
         elif column != self.view.Columns.MIDDLE:

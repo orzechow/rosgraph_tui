@@ -1,3 +1,4 @@
 setuptools
 urwid
 click
+thefuzz[speedup]

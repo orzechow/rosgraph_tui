@@ -3,6 +3,8 @@ from enum import Enum
 import rosnode
 import rosgraph
 
+from rosgraph_tui import fuzzy
+
 
 ID = '/rosgraph_tui'
 
@@ -91,14 +93,23 @@ class GraphModel:
         self.all_pubs = state[0]
         self.all_subs = state[1]
 
+    def fuzzy_sort(self, items, filter_string, threshold=.5):
+        rated_items = [(item, 1-fuzzy.partial_ratio(item, filter_string))
+                       for item in items]
+        filtered_items = [item for item in rated_items if item[1] < threshold]
+
+        def item_string(item): return f"{item[1]:03f}{item[0]}"
+        return [item[0] for item in sorted(filtered_items, key=item_string, reverse=False)]
+
     def get_nodes(self, filter_string=''):
-        return [item for item in sorted(self.all_nodes) if filter_string in item]
+        return self.fuzzy_sort(self.all_nodes, filter_string)
 
     def get_node_models(self, filter_string=''):
         return nodes_from_names(self, self.get_nodes(filter_string))
 
     def get_topics(self, filter_string=''):
-        return [item for item in sorted(t for t, l in self.all_topics) if filter_string in item]
+        topics = [t for t, l in self.all_topics]
+        return self.fuzzy_sort(topics, filter_string)
 
     def get_topic_models(self, filter_string=''):
         return topics_from_names(self, self.get_topics(filter_string))

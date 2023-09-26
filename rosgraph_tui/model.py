@@ -3,64 +3,81 @@ from enum import Enum
 import rosnode
 import rosgraph
 
+from rosgraph_tui import fuzzy
+
 
 ID = '/rosgraph_tui'
 
 
-class Model:
-    ListEntryTypes = Enum('NODE', 'TOPIC')
+class ListEntryTypes(Enum):
+    NODE = 0
+    TOPIC = 1
 
+
+class Modes(Enum):
+    NODES_AND_TOPICS = 0
+    NODES = 1
+    TOPICS = 2
+
+
+class Model:
     def __init__(self):
         self.graph = GraphModel()
 
+        self.main_mode = Modes.NODES_AND_TOPICS
+
         self.input_list = []
-        self.main_node_list = []
-        self.main_topic_list = []
+        self.main_list = nodes_from_names(self.graph, self.graph.get_nodes()) + \
+            topics_from_names(self.graph, self.graph.get_topics())
         self.output_list = []
+        self.filter_string = ''
+        self.choice = ''
 
-        self.set_main_node_list(self.graph.get_nodes())
-        self.set_main_topic_list(self.graph.get_topics())
+    def set_main_list(self, items):
+        self.main_list = items
 
-    def set_list(self, list, items, item_type=None):
-        del list[:]
-        if items:
-            if item_type == self.ListEntryTypes.NODE:
-                for item in items:
-                    list.append(NodeModel(item, self.graph))
-            elif item_type == self.ListEntryTypes.TOPIC:
-                for item in items:
-                    list.append(TopicModel(item, self.graph))
-            else:
-                raise TypeError("list entry is neither node nor topic: " + str(item_type))
+    def set_input_list(self, items):
+        self.input_list = items
 
-    def set_input_list(self, items, item_type=None):
-        self.set_list(self.input_list, items, item_type)
-
-    def set_output_list(self, items, item_type=None):
-        self.set_list(self.output_list, items, item_type)
-
-    def set_main_node_list(self, items):
-        self.set_list(self.main_node_list, items, self.ListEntryTypes.NODE)
-
-    def set_main_topic_list(self, items):
-        self.set_list(self.main_topic_list, items, self.ListEntryTypes.TOPIC)
+    def set_output_list(self, items):
+        self.output_list = items
 
 
 class NodeModel:
     def __init__(self, name, graph):
         self.name = name
+        self.graph = graph
+
+    def name_string(self):
+        return "N " + self.name
 
     def info_string(self):
         return ''
+
+    def get_input(self):
+        return topics_from_names(self.graph, self.graph.get_subscriptions(self.name))
+
+    def get_output(self):
+        return topics_from_names(self.graph, self.graph.get_publications(self.name))
 
 
 class TopicModel:
     def __init__(self, name, graph):
         self.name = name
+        self.graph = graph
         self.topic_type = graph.topic_type(name)
+
+    def name_string(self):
+        return "T " + self.name
 
     def info_string(self):
         return 'Type: ' + self.topic_type
+
+    def get_input(self):
+        return nodes_from_names(self.graph, self.graph.get_publishers(self.name))
+
+    def get_output(self):
+        return nodes_from_names(self.graph, self.graph.get_subscribers(self.name))
 
 
 class GraphModel:
@@ -76,14 +93,29 @@ class GraphModel:
         self.all_pubs = state[0]
         self.all_subs = state[1]
 
+    def fuzzy_sort(self, items, filter_string, threshold=.5):
+        rated_items = [(item, 1-fuzzy.partial_ratio(item, filter_string))
+                       for item in items]
+        filtered_items = [item for item in rated_items if item[1] < threshold]
+
+        def item_string(item): return f"{item[1]:03f}{item[0]}"
+        return [item[0] for item in sorted(filtered_items, key=item_string, reverse=False)]
+
     def get_nodes(self, filter_string=''):
-        return [item for item in sorted(self.all_nodes) if filter_string in item]
+        return self.fuzzy_sort(self.all_nodes, filter_string)
+
+    def get_node_models(self, filter_string=''):
+        return nodes_from_names(self, self.get_nodes(filter_string))
 
     def get_topics(self, filter_string=''):
-        return [item for item in sorted(t for t, l in self.all_topics) if filter_string in item]
+        topics = [t for t, l in self.all_topics]
+        return self.fuzzy_sort(topics, filter_string)
+
+    def get_topic_models(self, filter_string=''):
+        return topics_from_names(self, self.get_topics(filter_string))
 
     def get_publishers(self, topic_name):
-        matches = [l for t, l in self.all_pubs if topic_name==t]
+        matches = [l for t, l in self.all_pubs if topic_name == t]
         if matches:
             return sorted(*matches)
         else:
@@ -107,3 +139,11 @@ class GraphModel:
         if matches:
             return matches[0]
         return 'unknown type'
+
+
+def nodes_from_names(graph, names):
+    return [NodeModel(name, graph) for name in names]
+
+
+def topics_from_names(graph, names):
+    return [TopicModel(name, graph) for name in names]

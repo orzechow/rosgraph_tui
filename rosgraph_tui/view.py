@@ -1,6 +1,6 @@
 import urwid
 
-import widgets
+from rosgraph_tui import widgets
 
 
 class MainView:
@@ -17,6 +17,7 @@ class MainView:
             ('topic', 'dark cyan', 'black'),
             ('chosen_node', 'light gray,bold', 'black'),
             ('chosen_topic', 'dark cyan,bold', 'black'),
+            ('unconnected', 'dark red', 'black'),
             ('reversed', 'bold', '')]
 
         self.main_widget = widgets.ListColumn(choices_left, choices_middle, choices_right)
@@ -38,7 +39,7 @@ class MainView:
         self.main_widget.set_footer(footer, column)
 
     def set_focus(self, column):
-        self.main_widget.set_focus(column.index)
+        self.main_widget.set_focus(column.value)
 
     def reset_list(self, choices, column):
         self.main_widget.reset_list(choices, column)

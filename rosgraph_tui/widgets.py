@@ -1,4 +1,5 @@
 from enum import Enum
+
 import urwid
 
 
@@ -6,6 +7,10 @@ class ListEntry(urwid.Text):
     _selectable = True
 
     signals = ["click"]
+
+    def __init__(self, item):
+        self.original_item = item
+        super(ListEntry, self).__init__(item.name_string())
 
     def keypress(self, size, key):
         """
@@ -28,31 +33,39 @@ class ListEntry(urwid.Text):
 
 
 class List(urwid.ListBox):
-    signals = ["choice"]
+    signals = ["choice", "modified"]
 
     def sizing(self):
         return frozenset([urwid.FIXED])
 
     def __init__(self, choices):
-        self.choices_list = []
+        self.choices_widgets = []
         self.set_choices(choices)
 
     def reset_widget(self):
-        super(List, self).__init__(urwid.SimpleFocusListWalker(self.choices_list))
+        super(List, self).__init__(
+            urwid.SimpleFocusListWalker(self.choices_widgets))
+        urwid.connect_signal(self.body, 'modified', self.modified_callback)
+
+    def modified_callback(self):
+        self._emit('modified')
 
     def set_choices(self, choices):
-        self.choices_list = []
-        for style, text in choices:
-            button = ListEntry(text)
-            urwid.connect_signal(button, 'click', self.item_chosen, text)
-            self.choices_list.append(urwid.AttrMap(button, style, focus_map='reversed'))
+        self.choices_widgets = []
+        for style, item in choices:
+            button = ListEntry(item)
+            urwid.connect_signal(button, 'click', self.item_chosen, item)
+            self.choices_widgets.append(urwid.AttrMap(
+                button, style, focus_map='reversed'))
         self.reset_widget()
 
     def reset_list(self, choices):
+        choices_names = [item[1].name_string() for item in choices]
         focus = self.focus
         if focus:
-            if focus.original_widget.get_text() in choices:
-                focus_position = choices.index(focus.original_widget.get_text())
+            if focus.original_widget.get_text() in choices_names:
+                focus_position = choices_names.index(
+                    focus.original_widget.get_text())
             else:
                 focus_position = self.focus_position
                 focus_position = max(0, min(focus_position, len(choices) - 1))
@@ -72,16 +85,18 @@ class PaddedListFrame(urwid.Padding):
         return frozenset([urwid.FIXED])
 
     def __init__(self, title, choices):
-        self.header = urwid.Pile([('pack', urwid.Text(('header', title))), ('pack', urwid.Divider())])
+        self.header = urwid.Pile(
+            [('pack', urwid.Text(('header', title))), ('pack', urwid.Divider())])
         self.list = List(choices)
-        self.footer = urwid.Pile([('pack', urwid.Divider()), ('pack', urwid.Text(('footer', '')))])
+        self.footer = urwid.Pile(
+            [('pack', urwid.Divider()), ('pack', urwid.Text(('footer', '')))])
 
         body = urwid.Frame(self.list, self.header, self.footer)
         super(PaddedListFrame, self).__init__(body, left=2, right=2)
 
     def get_selection(self):
         if self.original_widget.body.focus:
-            return self.original_widget.body.focus.base_widget.text
+            return self.original_widget.body.focus.base_widget.original_item
         else:
             return None
 
@@ -96,8 +111,12 @@ class PaddedListFrame(urwid.Padding):
 
 
 class ListColumn(urwid.Columns):
+    signals = ["keypress"]
 
-    Columns = Enum('LEFT', 'MIDDLE', 'RIGHT')
+    class Columns(Enum):
+        LEFT = 0
+        MIDDLE = 1
+        RIGHT = 2
 
     def __init__(self, choices_left, choices_middle, choices_right):
         self.column_left = PaddedListFrame(u"Input:", choices_left)
@@ -106,6 +125,11 @@ class ListColumn(urwid.Columns):
 
         body = [self.column_left] + [self.column_middle] + [self.column_right]
         super(ListColumn, self).__init__(body)
+
+    def keypress(self, size, key):
+        previously_selected_column = self.get_selected_column()
+        super(ListColumn, self).keypress(size, key)
+        self._emit('keypress', key, previously_selected_column)
 
     def get_selection(self):
         if self.focus:
@@ -126,25 +150,25 @@ class ListColumn(urwid.Columns):
             None
 
     def set_title(self, title, column):
-        if column == self.Columns.LEFT:
+        if column == self.Columns.LEFT or column == self.Columns.LEFT.value:
             self.column_left.set_title(title)
-        elif column == self.Columns.MIDDLE:
+        elif column == self.Columns.MIDDLE or column == self.Columns.MIDDLE.value:
             self.column_middle.set_title(title)
-        elif column == self.Columns.RIGHT:
+        elif column == self.Columns.RIGHT or column == self.Columns.RIGHT.value:
             self.column_right.set_title(title)
 
     def set_footer(self, footer, column):
-        if column == self.Columns.LEFT:
+        if column == self.Columns.LEFT or column == self.Columns.LEFT.value:
             self.column_left.set_footer(footer)
-        elif column == self.Columns.MIDDLE:
+        elif column == self.Columns.MIDDLE or column == self.Columns.MIDDLE.value:
             self.column_middle.set_footer(footer)
-        elif column == self.Columns.RIGHT:
+        elif column == self.Columns.RIGHT or column == self.Columns.RIGHT.value:
             self.column_right.set_footer(footer)
 
     def reset_list(self, choices, column):
-        if column == self.Columns.LEFT:
+        if column == self.Columns.LEFT or column == self.Columns.LEFT.value:
             self.column_left.reset_list(choices)
-        elif column == self.Columns.MIDDLE:
+        elif column == self.Columns.MIDDLE or column == self.Columns.MIDDLE.value:
             self.column_middle.reset_list(choices)
-        elif column == self.Columns.RIGHT:
+        elif column == self.Columns.RIGHT or column == self.Columns.RIGHT.value:
             self.column_right.reset_list(choices)

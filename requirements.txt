@@ -1,3 +1,4 @@
-setuptools==41.0.1
-urwid==2.0.1
-enum
+setuptools
+urwid
+click
+thefuzz[speedup]

@@ -138,3 +138,51 @@ def test_info_line(demo_snapshot):
     listener = demo_snapshot.get(LISTENER)
     assert info_line(listener) == "1 subs / 1 pubs · 2 instances"
     assert info_line(None) == ""
+
+
+def test_preview_shows_inputs_and_outputs(demo_snapshot):
+    from rosgraph_tui.viewmodel import set_preview
+
+    vm = derive_view(demo_snapshot, set_preview(ViewState(), CHATTER))
+    assert refs(vm.left) == [TALKER] and refs(vm.right) == [LISTENER]
+    assert vm.left.title.startswith("Publishers (1)")
+    assert vm.right.title.startswith("Subscribers (1)")
+    # the middle column is unaffected by the preview
+    assert refs(vm.middle) == refs(derive_view(demo_snapshot, ViewState()).middle)
+
+
+def test_preview_ignores_filter_and_is_dropped_when_rooted(demo_snapshot):
+    from rosgraph_tui.viewmodel import set_preview
+
+    state = set_preview(ViewState(filter_text="zzz"), TALKER)
+    vm = derive_view(demo_snapshot, state)
+    assert len(refs(vm.right)) == 3  # publications of /talker, not filtered by "zzz"
+    rooted = derive_view(demo_snapshot, choose(state, CHATTER))
+    assert refs(rooted.left) == [TALKER]
+
+
+def test_preview_of_missing_or_hidden_entry_is_empty(demo_snapshot):
+    from rosgraph_tui.viewmodel import set_preview
+
+    vm = derive_view(demo_snapshot, set_preview(ViewState(), EntityRef(Kind.NODE, "/ghost")))
+    assert vm.left.rows == () and vm.left.title == "Input:"
+    vm = derive_view(demo_snapshot, set_preview(ViewState(), DAEMON))
+    assert vm.right.rows == ()
+    vm = derive_view(demo_snapshot, set_preview(ViewState(include_hidden=True), DAEMON))
+    assert len(vm.right.rows) == 2
+
+
+def test_set_preview_is_identity_when_unchanged():
+    from rosgraph_tui.viewmodel import set_preview
+
+    s = set_preview(ViewState(), TALKER)
+    assert set_preview(s, TALKER) is s
+
+
+def test_middle_refs_cached_across_preview_changes(demo_snapshot):
+    from rosgraph_tui.viewmodel import _middle_refs, set_preview
+
+    _middle_refs.cache_clear()
+    derive_view(demo_snapshot, set_preview(ViewState(filter_text="cam"), TALKER))
+    derive_view(demo_snapshot, set_preview(ViewState(filter_text="cam"), CHATTER))
+    assert _middle_refs.cache_info().hits >= 1

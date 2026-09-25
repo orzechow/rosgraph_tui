@@ -35,7 +35,7 @@ class RosgraphApp(App[None]):
         Binding("right", "move_right", "Right", show=False),
         Binding("ctrl+r,f5", "refresh", "Refresh"),
         Binding("ctrl+t,f2", "toggle_hidden", "Hidden"),
-        Binding("ctrl+q,ctrl+c", "quit", "Quit", priority=True),
+        Binding("ctrl+q,ctrl+c", "quit", "Quit", priority=True, key_display="^q"),
     ]
 
     snapshot: reactive[GraphSnapshot | None] = reactive(None, init=False)
@@ -52,6 +52,7 @@ class RosgraphApp(App[None]):
         self._last_poll_at = 0.0
         self._endpoints: dict[tuple[int, str], list[Endpoint]] = {}
         self._render_scheduled = False
+        self._last_filter = ""
         self._initial_state = ViewState(include_hidden=include_hidden)
 
     # --- layout -----------------------------------------------------------
@@ -201,11 +202,26 @@ class RosgraphApp(App[None]):
         if not self.is_mounted:
             return
         view = vm.derive_view(self.snapshot, self.state)
-        for column, model in zip(self.columns, (view.left, view.middle, view.right), strict=True):
+        filter_changed = self.state.filter_text != self._last_filter
+        self._last_filter = self.state.filter_text
+        left, middle, right = self.columns
+        for column, model in zip((left, middle, right), (view.left, view.middle, view.right), strict=True):
             column.set_title(model.title)
-            column.set_rows(model.rows)
+            # a new non-empty filter puts the highlight on the best match
+            keep = not (column is middle and filter_changed and self.state.filter_text)
+            column.set_rows(model.rows, keep_highlight=keep)
+        self._sync_preview()
         self._update_infos(view)
         self._update_subtitle(view.status)
+
+    def _sync_preview(self) -> None:
+        """Keep ``state.preview`` equal to the middle highlight while browsing."""
+        if self.state.root is not None:
+            return
+        ref = self.column(Column.MIDDLE).highlighted_ref
+        new_state = vm.set_preview(self.state, ref)
+        if new_state is not self.state:
+            self.state = new_state  # schedules one more (cheap, memoised) render
 
     def _update_infos(self, view: vm.ViewModel | None = None) -> None:
         if view is None:
@@ -216,12 +232,13 @@ class RosgraphApp(App[None]):
             ref = column.highlighted_ref
             entity = snapshot.get(ref) if snapshot and ref else None
             column.set_info(vm.info_line(entity, self._endpoints_for(ref)))
+        focus_ref = self.state.root if self.state.root is not None else middle.highlighted_ref
+        entity = snapshot.get(focus_ref) if snapshot and focus_ref else None
+        lines = []
         if self.state.filter_text:
-            middle.set_info(f"/{self.state.filter_text}▏")
-        elif self.state.root is not None and snapshot is not None:
-            middle.set_info(vm.info_line(snapshot.get(self.state.root), self._endpoints_for(self.state.root)))
-        else:
-            middle.set_info("type to filter")
+            lines.append(f"/{self.state.filter_text}▏")
+        lines.append(vm.info_line(entity, self._endpoints_for(focus_ref)) if entity else "type to filter")
+        middle.set_info("\n".join(lines))
 
     def _update_subtitle(self, status: str = "") -> None:
         parts = [self.source.describe()]
@@ -269,7 +286,10 @@ class RosgraphApp(App[None]):
                 self.choose(ref)
 
     @on(OptionList.OptionHighlighted)
-    def _on_option_highlighted(self, _event: OptionList.OptionHighlighted) -> None:
+    def _on_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
+        column = event.option_list.parent
+        if isinstance(column, EntityColumn) and column.id == "middle" and self.state.root is None:
+            self._sync_preview()
         self._update_infos()
 
     def on_descendant_focus(self, _event: events.DescendantFocus) -> None:

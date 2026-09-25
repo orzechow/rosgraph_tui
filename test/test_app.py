@@ -111,6 +111,10 @@ async def test_move_into_empty_column_is_ignored():
     app = make_app()
     async with app.run_test(size=SIZE) as pilot:
         await settle(app, pilot)
+        app.column(Column.MIDDLE).highlight(EntityRef(Kind.TOPIC, "/diagnostics"))  # no subscribers
+        await pilot.pause()
+        await pilot.pause()
+        assert rows(app, Column.RIGHT) == []
         await pilot.press("right")
         assert app.focused_column() == Column.MIDDLE
         app.choose(TALKER)  # no subscriptions -> left column empty
@@ -233,3 +237,60 @@ async def test_ctrl_q_quits():
         await pilot.press("ctrl+q")
         await pilot.pause()
         assert not app.is_running
+
+
+async def test_preview_follows_middle_highlight():
+    app = make_app()
+    async with app.run_test(size=SIZE) as pilot:
+        await settle(app, pilot)
+        middle = app.column(Column.MIDDLE)
+        middle.highlight(TALKER)
+        await pilot.pause()
+        await pilot.pause()
+        assert app.state.preview == TALKER
+        assert CHATTER in rows(app, Column.RIGHT)
+        assert str(app.column(Column.RIGHT).query_one(".title").render()).startswith("Publications (3)")
+        assert "0 subs / 3 pubs" in str(middle.query_one(".info").render())
+        await pilot.press("down")
+        await pilot.pause()
+        await pilot.pause()
+        assert app.state.preview == middle.highlighted_ref != TALKER
+
+
+async def test_typing_highlights_best_match_and_previews_it():
+    app = make_app()
+    async with app.run_test(size=SIZE) as pilot:
+        await settle(app, pilot)
+        middle = app.column(Column.MIDDLE)
+        middle.highlight(EntityRef(Kind.NODE, "/planning/planner"))
+        await pilot.pause()
+        await pilot.press("c", "h", "a", "t")
+        await pilot.pause()
+        await pilot.pause()
+        assert middle.option_list.highlighted == 0
+        assert middle.highlighted_ref == CHATTER
+        assert rows(app, Column.LEFT) == [TALKER]
+        assert rows(app, Column.RIGHT) == [LISTENER]
+        info = str(middle.query_one(".info").render())
+        assert "/chat" in info and "std_msgs/msg/String" in info
+        # clearing the filter keeps the highlight on the current entry
+        await pilot.press("escape")
+        await pilot.pause()
+        await pilot.pause()
+        assert app.state.filter_text == ""
+        assert middle.highlighted_ref == CHATTER
+
+
+async def test_walk_into_preview_column_roots():
+    app = make_app()
+    async with app.run_test(size=SIZE) as pilot:
+        await settle(app, pilot)
+        app.column(Column.MIDDLE).highlight(CHATTER)
+        await pilot.pause()
+        await pilot.pause()
+        await pilot.press("right")
+        assert app.focused_column() == Column.RIGHT
+        await pilot.press("right")
+        await pilot.pause()
+        assert app.state.root == LISTENER
+        assert app.column(Column.LEFT).highlighted_ref == CHATTER

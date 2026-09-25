@@ -96,15 +96,19 @@ class EntityColumn(Vertical):
         self.option_list.highlighted = index
         return True
 
-    def set_rows(self, rows: Sequence[Row]) -> bool:
+    def set_rows(self, rows: Sequence[Row], keep_highlight: bool = True) -> bool:
         """Replace the rows, keeping the highlight on the same entity.
 
-        Returns False (and does nothing) when the rows are unchanged, so a
-        1 Hz refresh of an unchanged graph costs no rendering at all.
+        With ``keep_highlight=False`` the highlight jumps to the first row
+        (the best match after a filter change).  Returns False (and does
+        nothing) when the rows are unchanged, so a 1 Hz refresh of an
+        unchanged graph costs no rendering at all.
         """
         rows = tuple(rows)
         key = tuple((r.ref, r.style) for r in rows)
         if key == self._row_key:
+            if not keep_highlight and rows and self.option_list.highlighted != 0:
+                self.option_list.highlighted = 0
             return False
 
         option_list = self.option_list
@@ -116,7 +120,7 @@ class EntityColumn(Vertical):
         option_list.clear_options()
         if rows:
             option_list.add_options([Option(row_text(row)) for row in rows])
-            index = self.index_of(previous_ref)
+            index = self.index_of(previous_ref) if keep_highlight else 0
             if index is None:
                 index = 0 if previous_index is None else max(0, min(previous_index, len(rows) - 1))
             option_list.highlighted = index

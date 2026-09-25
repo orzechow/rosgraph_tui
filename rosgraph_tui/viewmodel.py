@@ -23,6 +23,7 @@ class ViewState:
     scope: Kind | None = None  # restrict the un-rooted middle column to one kind
     filter_text: str = ""
     include_hidden: bool = False
+    preview: EntityRef | None = None  # highlighted middle entry while not rooted
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,10 @@ def toggle_hidden(state: ViewState) -> ViewState:
     return replace(state, include_hidden=not state.include_hidden)
 
 
+def set_preview(state: ViewState, ref: EntityRef | None) -> ViewState:
+    return state if state.preview == ref else replace(state, preview=ref)
+
+
 # --- derivation --------------------------------------------------------------
 
 
@@ -114,6 +119,12 @@ def _rows(
             continue
         rows.append(Row(ref, _style(entity, column, chosen), ref.label))
     return tuple(rows)
+
+
+@lru_cache(maxsize=16)
+def _middle_refs(snapshot: GraphSnapshot, kind: Kind | None, query: str) -> tuple[EntityRef, ...]:
+    """The fuzzy pass over the whole graph; cached so preview changes do not repeat it."""
+    return tuple(_filtered(snapshot, kind, query))
 
 
 def _filtered(snapshot: GraphSnapshot, kind: Kind | None, query: str) -> list[EntityRef]:
@@ -153,10 +164,11 @@ def derive_view(snapshot: GraphSnapshot | None, state: ViewState) -> ViewModel:
     query = state.filter_text
 
     if state.root is None:
-        refs = _filtered(vis, state.scope, query)
+        refs = _middle_refs(vis, state.scope, query)
         rows = _rows(vis, refs, Column.MIDDLE, None)
         middle = ColumnModel(_scope_title(vis, state.scope) + ":", rows, info=query)
-        return ViewModel(ColumnModel("Input:"), middle, ColumnModel("Output:"))
+        left, right = _side_columns(vis, state.preview, "")
+        return ViewModel(left, middle, right)
 
     root = state.root
     entity = vis.get(root)
@@ -165,17 +177,25 @@ def derive_view(snapshot: GraphSnapshot | None, state: ViewState) -> ViewModel:
         middle = ColumnModel(f"{root.kind.title} (gone):", (gone,), info=query)
         return ViewModel(ColumnModel("Input:"), middle, ColumnModel("Output:"), status="root gone")
 
-    if root.kind is Kind.NODE:
+    left, right = _side_columns(vis, root, query)
+    middle = ColumnModel(f"{root.kind.title}:", _rows(vis, [root], Column.MIDDLE, root), info=query)
+    return ViewModel(left, middle, right)
+
+
+def _side_columns(vis: GraphSnapshot, ref: EntityRef | None, query: str) -> tuple[ColumnModel, ColumnModel]:
+    """Inputs and outputs of ``ref`` (the root, or the previewed entry)."""
+    entity = vis.get(ref) if ref is not None else None
+    if entity is None:
+        return ColumnModel("Input:"), ColumnModel("Output:")
+    if ref.kind is Kind.NODE:
         left_title, right_title = "Subscriptions", "Publications"
     else:
         left_title, right_title = "Publishers", "Subscribers"
-
     inputs = _filter_refs(entity.inputs, query)
     outputs = _filter_refs(entity.outputs, query)
     left = ColumnModel(f"{left_title} ({len(inputs)}):", _rows(vis, inputs, Column.LEFT, None))
     right = ColumnModel(f"{right_title} ({len(outputs)}):", _rows(vis, outputs, Column.RIGHT, None))
-    middle = ColumnModel(f"{root.kind.title}:", _rows(vis, [root], Column.MIDDLE, root), info=query)
-    return ViewModel(left, middle, right)
+    return left, right
 
 
 # --- info line ---------------------------------------------------------------

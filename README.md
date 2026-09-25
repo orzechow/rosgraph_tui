@@ -23,7 +23,8 @@ Powered by [Textual](https://github.com/Textualize/textual) for the UI,
 
 ## Features
 
-- One list of all nodes and topics; type to fuzzy-filter it, best match first.
+- One list of all nodes and topics; type to fuzzy-filter it, the best match is highlighted.
+- While browsing, the highlighted entry's inputs and outputs are previewed in the side columns.
 - Choose an entry to root the view on it: inputs on the left (subscriptions of a
   node, publishers of a topic), outputs on the right.
 - Arrow past the edge of a side column to re-root on that entry and keep walking.
@@ -94,7 +95,7 @@ python3 -m venv ~/.venvs/rosgraph_tui
 | --- | --- |
 | letters, digits, `_ / . -` | filter the list (fuzzy, case-insensitive) |
 | `Backspace` | delete the last filter character |
-| `↑` `↓` | move the highlight |
+| `↑` `↓` | move the highlight; the highlighted entry's inputs and outputs are previewed left and right |
 | `Enter` / double-click | root the view on the highlighted entry |
 | `←` `→` | move between the columns; press again at the outer edge to root on that entry |
 | `Esc` | one step back: clear filter → un-root → show nodes and topics → quit |

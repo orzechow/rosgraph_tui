@@ -10,7 +10,7 @@ class ListEntry(urwid.Text):
 
     def __init__(self, item):
         self.original_item = item
-        super(ListEntry, self).__init__(item.name_string())
+        super().__init__(item.name_string())
 
     def keypress(self, size, key):
         """
@@ -43,7 +43,7 @@ class List(urwid.ListBox):
         self.set_choices(choices)
 
     def reset_widget(self):
-        super(List, self).__init__(
+        super().__init__(
             urwid.SimpleFocusListWalker(self.choices_widgets))
         urwid.connect_signal(self.body, 'modified', self.modified_callback)
 
@@ -92,7 +92,7 @@ class PaddedListFrame(urwid.Padding):
             [('pack', urwid.Divider()), ('pack', urwid.Text(('footer', '')))])
 
         body = urwid.Frame(self.list, self.header, self.footer)
-        super(PaddedListFrame, self).__init__(body, left=2, right=2)
+        super().__init__(body, left=2, right=2)
 
     def get_selection(self):
         if self.original_widget.body.focus:
@@ -119,16 +119,16 @@ class ListColumn(urwid.Columns):
         RIGHT = 2
 
     def __init__(self, choices_left, choices_middle, choices_right):
-        self.column_left = PaddedListFrame(u"Input:", choices_left)
-        self.column_middle = PaddedListFrame(u"middle choice:", choices_middle)
-        self.column_right = PaddedListFrame(u"Output:", choices_right)
+        self.column_left = PaddedListFrame("Input:", choices_left)
+        self.column_middle = PaddedListFrame("middle choice:", choices_middle)
+        self.column_right = PaddedListFrame("Output:", choices_right)
 
         body = [self.column_left] + [self.column_middle] + [self.column_right]
-        super(ListColumn, self).__init__(body)
+        super().__init__(body)
 
     def keypress(self, size, key):
         previously_selected_column = self.get_selected_column()
-        super(ListColumn, self).keypress(size, key)
+        super().keypress(size, key)
         self._emit('keypress', key, previously_selected_column)
 
     def get_selection(self):

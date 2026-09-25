@@ -9,15 +9,16 @@ from rapidfuzz import fuzz, process
 DEFAULT_CUTOFF = 50.0
 
 
-def fuzzy_filter(names: Sequence[str], query: str, cutoff: float = DEFAULT_CUTOFF) -> list[str]:
-    """Return the names matching ``query``, best match first, ties by name.
+def fuzzy_rank(names: Sequence[str], query: str, cutoff: float = DEFAULT_CUTOFF) -> list[tuple[str, float]]:
+    """Return ``(name, score)`` for names scoring strictly above ``cutoff``.
 
-    An empty query returns ``names`` unchanged (they are expected to be sorted
-    already).  Matching is case-insensitive and uses ``partial_ratio`` so a
-    short query matches anywhere inside a long topic name.
+    Best match first, ties by name.  An empty query returns every name with a
+    perfect score, in the given order (callers pass sorted names).  Matching
+    is case-insensitive and uses ``partial_ratio`` so a short query matches
+    anywhere inside a long topic name.
     """
     if not query:
-        return list(names)
+        return [(name, 100.0) for name in names]
     hits = process.extract(
         query,
         names,
@@ -26,5 +27,11 @@ def fuzzy_filter(names: Sequence[str], query: str, cutoff: float = DEFAULT_CUTOF
         score_cutoff=cutoff,
         limit=None,
     )
-    hits.sort(key=lambda hit: (-hit[1], hit[0]))
-    return [name for name, _score, _index in hits]
+    ranked = [(name, score) for name, score, _index in hits if score > cutoff]
+    ranked.sort(key=lambda hit: (-hit[1], hit[0]))
+    return ranked
+
+
+def fuzzy_filter(names: Sequence[str], query: str, cutoff: float = DEFAULT_CUTOFF) -> list[str]:
+    """Like :func:`fuzzy_rank` but returns only the names."""
+    return [name for name, _score in fuzzy_rank(names, query, cutoff)]

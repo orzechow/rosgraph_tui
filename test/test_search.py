@@ -24,3 +24,11 @@ def test_ties_are_broken_by_name():
 
 def test_case_insensitive():
     assert fuzzy_filter(NAMES, "CHATTER")[0] == "/chatter"
+
+
+def test_cutoff_is_exclusive():
+    from rosgraph_tui.search import fuzzy_rank
+
+    # partial_ratio("chat", "/parameter_events") is exactly 50 -> excluded
+    assert fuzzy_rank(["/parameter_events"], "chat") == []
+    assert fuzzy_rank(["/chatter"], "chat") == [("/chatter", 100.0)]

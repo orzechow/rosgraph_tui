@@ -1,11 +1,9 @@
 import urwid
 from click import secho
-
 from rosnode import ROSNodeIOException
 
-from rosgraph_tui import model
+from rosgraph_tui import model, view
 from rosgraph_tui.model import Modes
-from rosgraph_tui import view
 
 
 class Controller:

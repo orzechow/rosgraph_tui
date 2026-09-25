@@ -130,9 +130,12 @@ class RawGraph:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class GraphSnapshot:
-    """Immutable, fully indexed view of the graph at one point in time."""
+    """Immutable, fully indexed view of the graph at one point in time.
+
+    ``eq=False`` keeps identity hashing so snapshots can key an LRU cache.
+    """
 
     entities: dict[EntityRef, Entity]
     taken_at: float = 0.0

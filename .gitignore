@@ -133,3 +133,6 @@ dmypy.json
 build/
 install/
 log/
+
+# uv
+.venv/

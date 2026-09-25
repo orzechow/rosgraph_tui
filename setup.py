@@ -1,58 +1,34 @@
-import re
-from pathlib import Path
+"""Kept for colcon / ament_python.  All metadata lives in pyproject.toml.
 
-from setuptools import find_packages, setup
+Two things PEP 621 cannot express are done here:
+
+* the ament index resource marker and package.xml are installed as
+  ``data_files``;
+* colcon-python-setup-py introspects ``setup.py`` by ``repr()``-ing the
+  Distribution and ``ast.literal_eval``-ing the result, which breaks on the
+  ``SpecifierSet`` that setuptools stores for ``requires-python`` when it
+  comes from pyproject.toml.  ``_Distribution`` turns it back into the plain
+  string that a ``python_requires=`` keyword would have produced.
+"""
+
+from setuptools import Distribution, setup
 
 package_name = "rosgraph_tui"
-here = Path(__file__).parent
-long_description = (here / "README.md").read_text()
-version = re.search(r'__version__ = "([^"]+)"', (here / package_name / "__init__.py").read_text()).group(1)
+
+
+class _Distribution(Distribution):
+    def parse_config_files(self, filenames=None, ignore_option_errors=False):
+        super().parse_config_files(filenames=filenames, ignore_option_errors=ignore_option_errors)
+        for obj in (self, self.metadata):
+            value = getattr(obj, "python_requires", None)
+            if value is not None and not isinstance(value, str):
+                obj.python_requires = str(value)
+
 
 setup(
-    name=package_name,
-    version=version,
-    author="Piotr Orzechowski",
-    author_email="orzechow@posteo.de",
-    maintainer="Piotr Orzechowski",
-    maintainer_email="orzechow@posteo.de",
-    description="An interactive terminal user interface (TUI) to explore and debug your ROS 2 graph.",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/orzechow/rosgraph_tui",
-    packages=find_packages(exclude=["test", "test.*"]),
-    package_data={package_name: ["*.tcss", "fixtures/*.json"]},
-    include_package_data=True,
+    distclass=_Distribution,
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
     ],
-    license="MIT",
-    python_requires=">=3.10",
-    # rclpy is deliberately absent: it comes from the sourced ROS 2 installation.
-    install_requires=[
-        "textual>=8,<9",
-        "rapidfuzz>=3",
-    ],
-    extras_require={
-        "dev": ["pytest>=7", "pytest-asyncio>=0.23", "ruff"],
-    },
-    classifiers=[
-        "Environment :: Console",
-        "Framework :: Robot Framework :: Tool",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
-        "Natural Language :: English",
-        "Operating System :: Unix",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-        "Topic :: Software Development :: Debuggers",
-    ],
-    entry_points={
-        "console_scripts": [
-            "rosgraph_tui = rosgraph_tui.cli:main",
-        ]
-    },
-    zip_safe=False,
 )

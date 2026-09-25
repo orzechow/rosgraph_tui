@@ -41,30 +41,51 @@ Powered by [Textual](https://github.com/Textualize/textual) for the UI,
 
 ## Installation
 
-Supported: ROS 2 Humble and newer (Python ≥ 3.10).
+Supported: ROS 2 Humble and newer (Python ≥ 3.10). The commands below work in
+zsh and bash. Ubuntu's system Python is *externally managed* (PEP 668), so
+everything is installed into a virtual environment; you need
 
-**pip, inside a sourced ROS 2 environment** (rclpy comes from ROS, everything
-else from PyPI):
-
-```bash
-source /opt/ros/jazzy/setup.bash   # or humble, kilted, ...
-pip install rosgraph-tui           # or: pip install git+https://github.com/orzechow/rosgraph_tui
-rosgraph_tui
+```zsh
+sudo apt install python3-venv python3-pip git
 ```
+
+**From git, inside a sourced ROS 2 environment** (rclpy comes from ROS,
+everything else from PyPI). Not on PyPI yet.
+
+```zsh
+source /opt/ros/lyrical/setup.zsh          # or jazzy, humble, ...; setup.bash in bash
+python3 -m venv --system-site-packages ~/.venvs/rosgraph_tui
+~/.venvs/rosgraph_tui/bin/pip install 'git+https://github.com/orzechow/rosgraph_tui@ros2_port'
+~/.venvs/rosgraph_tui/bin/rosgraph_tui
+```
+
+The ROS setup script puts rclpy on `PYTHONPATH`, so the tool finds it from the
+venv as long as ROS is sourced in the shell you run it from. Replace
+`@ros2_port` with `@main` once the port is merged. Add
+`~/.venvs/rosgraph_tui/bin` to your `PATH` or alias the binary if you like.
 
 **As a colcon package:**
 
-```bash
-cd ~/ros2_ws/src && git clone https://github.com/orzechow/rosgraph_tui
-pip install textual rapidfuzz      # not available as rosdep keys in a recent enough version
-cd ~/ros2_ws && colcon build --packages-select rosgraph_tui && source install/setup.bash
+```zsh
+cd ~/ros2_ws/src && git clone -b ros2_port https://github.com/orzechow/rosgraph_tui
+python3 -m venv --system-site-packages ~/.venvs/rosgraph_tui
+~/.venvs/rosgraph_tui/bin/pip install textual rapidfuzz   # no recent enough rosdep keys
+source ~/.venvs/rosgraph_tui/bin/activate
+cd ~/ros2_ws && colcon build --packages-select rosgraph_tui && source install/setup.zsh
 ros2 run rosgraph_tui rosgraph_tui
 ```
 
+(`pip install --break-system-packages textual rapidfuzz` works too if you
+prefer not to keep a venv activated. On Humble, add `'setuptools>=61'` to the
+`pip install`, because the metadata lives in `pyproject.toml` and Ubuntu 22.04's
+setuptools 59 cannot read it.)
+
 **Without ROS 2**, to try it out:
 
-```bash
-pip install rosgraph-tui && rosgraph_tui --demo
+```zsh
+python3 -m venv ~/.venvs/rosgraph_tui
+~/.venvs/rosgraph_tui/bin/pip install 'git+https://github.com/orzechow/rosgraph_tui@ros2_port'
+~/.venvs/rosgraph_tui/bin/rosgraph_tui --demo
 ```
 
 ## Usage
@@ -114,20 +135,34 @@ hash) do not touch the UI at all.
 
 ## Development
 
-```bash
-python3 -m venv .venv && . .venv/bin/activate
-pip install -e .[dev]
-pytest                      # unit, Textual pilot and perf tests; no ROS 2 needed
-ruff check rosgraph_tui test scripts
-rosgraph_tui --demo         # or: --fixture path/to/graph.json
+With [uv](https://docs.astral.sh/uv/) (recommended; `uv.lock` pins the dev
+environment; install uv with `pipx install uv` or the
+[standalone installer](https://docs.astral.sh/uv/getting-started/installation/)):
+
+```zsh
+git clone -b ros2_port https://github.com/orzechow/rosgraph_tui && cd rosgraph_tui
+uv sync                     # creates .venv with the package and the dev tools
+uv run pytest               # unit, Textual pilot and perf tests; no ROS 2 needed
+uv run ruff check rosgraph_tui test scripts
+uv run rosgraph_tui --demo  # or: --fixture path/to/graph.json
+```
+
+With plain venv + pip:
+
+```zsh
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e '.[dev]'     # the quotes matter in zsh, where [dev] is a glob
+pytest
 ```
 
 With a sourced ROS 2 installation the `test/ros` integration test and the poll
-benchmark also run:
+benchmark also run. rclpy is found through `PYTHONPATH`, which the ROS setup
+script exports, so the same environment works:
 
-```bash
-pytest -m ros
-python3 scripts/bench_poll.py --nodes 200 --topics-per-node 10
+```zsh
+source /opt/ros/jazzy/setup.zsh
+uv run pytest -m ros
+uv run python scripts/bench_poll.py --nodes 200 --topics-per-node 10
 ```
 
 CI runs the same in a `ros:jazzy-ros-core` container together with a colcon

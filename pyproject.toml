@@ -4,6 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
+# ROS 2 ships pytest plugins (launch_testing*) that break on pytest >= 9; we do not need them
+addopts = "-p no:launch_testing -p no:launch_ros"
 asyncio_mode = "auto"
 markers = [
     "ros: needs a sourced ROS 2 installation (run inside the Docker job)",

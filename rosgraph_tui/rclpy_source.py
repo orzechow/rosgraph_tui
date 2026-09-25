@@ -94,8 +94,11 @@ class RclpyGraphSource(GraphSource):
             init_kwargs["signal_handler_options"] = SignalHandlerOptions.NO
         except ImportError:  # pragma: no cover - older rclpy
             pass
+        # Own context: does not collide with an application that already
+        # called rclpy.init() (e.g. the benchmark script or an embedding tool).
+        self._context = rclpy.Context()
         try:
-            rclpy.init(args=list(argv) if argv else None, **init_kwargs)
+            rclpy.init(args=list(argv) if argv else None, context=self._context, **init_kwargs)
         except Exception as exc:  # noqa: BLE001
             raise SourceError(f"rclpy.init failed: {exc}") from exc
 
@@ -107,9 +110,9 @@ class RclpyGraphSource(GraphSource):
             node_kwargs["start_parameter_services"] = False
         name = node_name or f"_rosgraph_tui_{os.getpid()}"
         try:
-            self._node = rclpy.create_node(name, **node_kwargs)
+            self._node = rclpy.create_node(name, context=self._context, **node_kwargs)
         except Exception as exc:  # noqa: BLE001
-            rclpy.try_shutdown()
+            self._context.try_shutdown()
             raise SourceError(f"could not create the introspection node: {exc}") from exc
 
     # --- GraphSource --------------------------------------------------------
@@ -195,7 +198,6 @@ class RclpyGraphSource(GraphSource):
                 self._node.destroy_node()
             finally:
                 try:
-                    if rclpy.ok():
-                        rclpy.shutdown()
+                    self._context.try_shutdown()
                 except Exception:  # noqa: BLE001
                     pass

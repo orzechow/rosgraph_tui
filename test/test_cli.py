@@ -1,3 +1,4 @@
+import subprocess
 import sys
 
 import pytest
@@ -20,10 +21,12 @@ def test_parser_defaults():
 
 
 def test_demo_source_does_not_import_rclpy():
-    args = build_parser().parse_args(["--demo"])
-    source = make_source(args, ["--demo"])
-    assert source.describe() == "demo"
-    assert "rclpy" not in sys.modules
+    code = (
+        "import sys; from rosgraph_tui.cli import build_parser, make_source; "
+        "src = make_source(build_parser().parse_args(['--demo']), ['--demo']); "
+        "assert src.describe() == 'demo'; assert 'rclpy' not in sys.modules"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_fixture_source(tmp_path):
@@ -31,10 +34,6 @@ def test_fixture_source(tmp_path):
     path.write_text('{"nodes": [{"name": "a", "namespace": "/"}]}')
     args = build_parser().parse_args(["--fixture", str(path)])
     assert make_source(args, []).snapshot().names(None) == ["/a"]
-
-
-def test_missing_rclpy_gives_clear_error():
-    pytest.importorskip("rclpy", reason="rclpy present; the error path is not reachable")
 
 
 def test_missing_rclpy_error_message(monkeypatch):

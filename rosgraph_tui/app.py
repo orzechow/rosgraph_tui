@@ -27,6 +27,7 @@ POLL_BUDGET = 0.2  # a poll may use at most this fraction of the interval
 class RosgraphApp(App[None]):
     CSS_PATH = "app.tcss"
     TITLE = "rosgraph_tui"
+    ENABLE_COMMAND_PALETTE = False
 
     BINDINGS = [
         Binding("escape", "back", "Back"),

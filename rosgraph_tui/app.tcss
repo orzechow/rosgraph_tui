@@ -31,6 +31,7 @@ Screen {
 }
 
 .column .info {
-    height: 1;
+    height: auto;
+    max-height: 3;
     color: $text-muted;
 }

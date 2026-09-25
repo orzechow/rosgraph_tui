@@ -1,0 +1,4 @@
+include README.md LICENSE package.xml
+recursive-include resource *
+recursive-include rosgraph_tui *.tcss
+recursive-include rosgraph_tui/fixtures *.json

@@ -15,7 +15,7 @@ import io
 from pathlib import Path
 
 import cairosvg
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from rosgraph_tui.app import RosgraphApp
 from rosgraph_tui.model import EntityRef, Kind
@@ -26,21 +26,23 @@ SIZE = (110, 24)
 WIDTH = 960  # px, GIF and screenshot width
 
 KEY_LABELS = {
-    "enter": "Enter",
-    "escape": "Esc",
+    "enter": "↩ enter",
+    "escape": "esc",
     "left": "←",
     "right": "→",
     "up": "↑",
     "down": "↓",
-    "ctrl+t": "Ctrl+T",
-    "ctrl+r": "Ctrl+R",
-    "backspace": "Backspace",
+    "ctrl+t": "⌃ T",
+    "ctrl+r": "⌃ R",
+    "ctrl+q": "⌃ Q",
+    "backspace": "⌫",
 }
 FONT_CANDIDATES = [
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
 ]
+HISTORY = 4  # keycaps shown at once, oldest fades out
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -50,29 +52,77 @@ def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     return ImageFont.load_default(size)
 
 
-def key_overlay(frame: Image.Image, keys: tuple[str, ...]) -> Image.Image:
-    """Draw a keycap badge for the pressed keys into the top-right corner."""
-    if not keys:
-        return frame
-    label = "  ".join(KEY_LABELS.get(k, k) for k in keys)
-    frame = frame.convert("RGBA")
-    overlay = Image.new("RGBA", frame.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    font = _font(max(14, frame.width // 48))
-    pad_x, pad_y = 12, 6
-    left, top, right, bottom = draw.textbbox((0, 0), label, font=font)
-    text_w, text_h = right - left, bottom - top
-    box_w, box_h = text_w + 2 * pad_x, text_h + 2 * pad_y
-    x1, y1 = frame.width - box_w - 14, 8
-    draw.rounded_rectangle((x1, y1, x1 + box_w, y1 + box_h), radius=8, fill=(255, 196, 0, 235))
-    draw.text((x1 + pad_x - left, y1 + pad_y - top), label, font=font, fill=(20, 20, 20, 255))
-    return Image.alpha_composite(frame, overlay).convert("RGB")
+class KeyCaster:
+    """KeyCastr-style overlay: a translucent pill at the bottom centre with the
+    last few keystrokes as keycaps, the newest bright, older ones fading."""
+
+    def __init__(self) -> None:
+        self.history: list[str] = []
+
+    def push(self, keys: tuple[str, ...]) -> None:
+        self.history.extend(KEY_LABELS.get(k, k.upper() if len(k) == 1 else k) for k in keys)
+        self.history = self.history[-HISTORY:]
+
+    def draw(self, frame: Image.Image) -> Image.Image:
+        if not self.history:
+            return frame
+        scale = 2  # supersample for smooth corners and shadows
+        w, h = frame.width * scale, frame.height * scale
+        overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        font = _font(frame.width * scale // 44)
+        cap_pad_x, cap_pad_y, cap_gap, pill_pad = 14 * scale, 7 * scale, 8 * scale, 10 * scale
+
+        caps = []
+        for label in self.history:
+            left, top, right, bottom = draw.textbbox((0, 0), label, font=font)
+            caps.append((label, right - left, bottom - top, left, top))
+        cap_h = max(c[2] for c in caps) + 2 * cap_pad_y
+        widths = [c[1] + 2 * cap_pad_x for c in caps]
+        pill_w = sum(widths) + cap_gap * (len(caps) - 1) + 2 * pill_pad
+        pill_h = cap_h + 2 * pill_pad
+        x0 = (w - pill_w) // 2
+        y0 = int(h * 0.70) - pill_h // 2  # over the lower list area, clear of the info lines
+
+        # drop shadow, then the pill
+        shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        shadow_box = (x0, y0 + 4 * scale, x0 + pill_w, y0 + pill_h + 4 * scale)
+        ImageDraw.Draw(shadow).rounded_rectangle(shadow_box, radius=pill_h // 2, fill=(0, 0, 0, 150))
+        shadow = shadow.filter(ImageFilter.GaussianBlur(6 * scale))
+        overlay = Image.alpha_composite(overlay, shadow)
+        draw = ImageDraw.Draw(overlay)
+        pill = (24, 24, 28)
+        draw.rounded_rectangle((x0, y0, x0 + pill_w, y0 + pill_h), radius=pill_h // 2, fill=(*pill, 246))
+
+        def fade(color: tuple[int, int, int], amount: float) -> tuple[int, int, int, int]:
+            """Blend towards the pill colour; older keycaps sink into the pill."""
+            return tuple(int(c + (p - c) * amount) for c, p in zip(color, pill, strict=True)) + (255,)
+
+        x = x0 + pill_pad
+        n = len(caps)
+        for i, ((label, _tw, _th, left, top), cw) in enumerate(zip(caps, widths, strict=True)):
+            age = n - 1 - i  # 0 = newest
+            amount = min(0.85, 0.3 * age)
+            face = fade((248, 248, 250) if age == 0 else (196, 196, 204), amount)
+            edge = fade((150, 150, 160) if age == 0 else (104, 104, 114), amount)
+            ink = fade((24, 24, 30), amount * 0.5)
+            y = y0 + pill_pad
+            # keycap: light face with a darker bottom edge for a little depth
+            lift = 3 * scale
+            draw.rounded_rectangle((x, y + lift, x + cw, y + cap_h + lift), radius=7 * scale, fill=edge)
+            draw.rounded_rectangle((x, y, x + cw, y + cap_h), radius=7 * scale, fill=face)
+            draw.text((x + cap_pad_x - left, y + cap_pad_y - top), label, font=font, fill=ink)
+            x += cw + cap_gap
+
+        overlay = overlay.resize(frame.size, Image.Resampling.LANCZOS)
+        return Image.alpha_composite(frame.convert("RGBA"), overlay).convert("RGB")
 
 
 async def record() -> tuple[list[tuple[Image.Image, int]], Image.Image]:
     app = RosgraphApp(demo_source(), refresh_rate=0)
     frames: list[tuple[Image.Image, int]] = []
     still: Image.Image | None = None
+    caster = KeyCaster()
 
     def snap() -> Image.Image:
         png = cairosvg.svg2png(bytestring=app.export_screenshot().encode(), output_width=WIDTH)
@@ -87,8 +137,9 @@ async def record() -> tuple[list[tuple[Image.Image, int]], Image.Image]:
         async def step(*keys: str, hold: int = 700) -> None:
             if keys:
                 await pilot.press(*keys)
+                caster.push(keys)
             await settle()
-            frames.append((key_overlay(snap(), keys), hold))
+            frames.append((caster.draw(snap()) if keys else snap(), hold))
 
         await step(hold=1200)  # the full list
         for key in "cam":  # type to filter; the best match is highlighted

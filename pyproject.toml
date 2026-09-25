@@ -41,6 +41,7 @@ dev = ["pytest>=7", "pytest-asyncio>=0.23", "ruff"]
 
 [dependency-groups]
 dev = ["pytest>=7", "pytest-asyncio>=0.23", "ruff"]
+media = ["cairosvg>=2.7", "pillow>=10"]
 
 [tool.setuptools]
 include-package-data = true

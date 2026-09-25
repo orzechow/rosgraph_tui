@@ -127,6 +127,13 @@ def _middle_refs(snapshot: GraphSnapshot, kind: Kind | None, query: str) -> tupl
     return tuple(_filtered(snapshot, kind, query))
 
 
+@lru_cache(maxsize=16)
+def _middle_column(snapshot: GraphSnapshot, kind: Kind | None, query: str) -> ColumnModel:
+    """The un-rooted middle column; cached so a preview change costs no row building."""
+    rows = _rows(snapshot, _middle_refs(snapshot, kind, query), Column.MIDDLE, None)
+    return ColumnModel(_scope_title(snapshot, kind) + ":", rows, info=query)
+
+
 def _filtered(snapshot: GraphSnapshot, kind: Kind | None, query: str) -> list[EntityRef]:
     if kind is not None:
         return [EntityRef(kind, n) for n in fuzzy_filter(snapshot.names(kind), query)]
@@ -164,9 +171,7 @@ def derive_view(snapshot: GraphSnapshot | None, state: ViewState) -> ViewModel:
     query = state.filter_text
 
     if state.root is None:
-        refs = _middle_refs(vis, state.scope, query)
-        rows = _rows(vis, refs, Column.MIDDLE, None)
-        middle = ColumnModel(_scope_title(vis, state.scope) + ":", rows, info=query)
+        middle = _middle_column(vis, state.scope, query)
         left, right = _side_columns(vis, state.preview, "")
         return ViewModel(left, middle, right)
 

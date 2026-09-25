@@ -179,10 +179,10 @@ def test_set_preview_is_identity_when_unchanged():
     assert set_preview(s, TALKER) is s
 
 
-def test_middle_refs_cached_across_preview_changes(demo_snapshot):
-    from rosgraph_tui.viewmodel import _middle_refs, set_preview
+def test_middle_column_cached_across_preview_changes(demo_snapshot):
+    from rosgraph_tui.viewmodel import _middle_column, set_preview
 
-    _middle_refs.cache_clear()
+    _middle_column.cache_clear()
     derive_view(demo_snapshot, set_preview(ViewState(filter_text="cam"), TALKER))
     derive_view(demo_snapshot, set_preview(ViewState(filter_text="cam"), CHATTER))
-    assert _middle_refs.cache_info().hits >= 1
+    assert _middle_column.cache_info().hits >= 1

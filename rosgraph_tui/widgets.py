@@ -1,174 +1,123 @@
-from enum import Enum
+"""Textual widgets: one column = title, virtualised list, info line."""
 
-import urwid
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+from rich.text import Text
+from textual.app import ComposeResult
+from textual.containers import Vertical
+from textual.widgets import Label, OptionList, Static
+from textual.widgets.option_list import Option
+
+from rosgraph_tui.model import EntityRef, Kind
+from rosgraph_tui.viewmodel import Row
+
+_KIND_COLOR = {Kind.NODE: "", Kind.TOPIC: "cyan"}
+_STYLE_MOD = {
+    "node": "",
+    "topic": "",
+    "chosen": "bold",
+    "unconnected": "red",
+    "hidden": "dim",
+    "gone": "red strike",
+}
 
 
-class ListEntry(urwid.Text):
-    _selectable = True
+def row_text(row: Row) -> Text:
+    color = _KIND_COLOR[row.ref.kind]
+    mod = _STYLE_MOD.get(row.style, "")
+    if row.style in ("unconnected", "gone"):
+        color = ""  # red wins over the kind colour
+    style = " ".join(part for part in (color, mod) if part)
+    return Text(row.label, style=style, no_wrap=True, overflow="ellipsis")
 
-    signals = ["click"]
 
-    def __init__(self, item):
-        self.original_item = item
-        super().__init__(item.name_string())
+class EntityColumn(Vertical):
+    """A titled list of entities with an info line underneath."""
 
-    def keypress(self, size, key):
-        """
-        Send 'click' signal on 'activate' command.
-        """
-        if self._command_map[key] != urwid.ACTIVATE:
-            return key
+    DEFAULT_CLASSES = "column"
 
-        self._emit('click')
+    def __init__(self, column_id: str, title: str) -> None:
+        super().__init__(id=column_id)
+        self._title = title
+        self._rows: tuple[Row, ...] = ()
+        self._row_key: tuple | None = None
 
-    def mouse_event(self, size, event, button, x, y, focus):
-        """
-        Send 'click' signal on button 1 press.
-        """
-        if button != 1 or not urwid.util.is_mouse_press(event):
+    def compose(self) -> ComposeResult:
+        yield Label(self._title, classes="title")
+        yield OptionList(id=f"{self.id}-list")
+        yield Static("", classes="info")
+
+    # --- accessors ---------------------------------------------------------
+
+    @property
+    def option_list(self) -> OptionList:
+        return self.query_one(OptionList)
+
+    @property
+    def rows(self) -> tuple[Row, ...]:
+        return self._rows
+
+    @property
+    def highlighted_ref(self) -> EntityRef | None:
+        index = self.option_list.highlighted
+        if index is None or index >= len(self._rows):
+            return None
+        return self._rows[index].ref
+
+    def ref_at(self, index: int | None) -> EntityRef | None:
+        if index is None or index < 0 or index >= len(self._rows):
+            return None
+        return self._rows[index].ref
+
+    def index_of(self, ref: EntityRef | None) -> int | None:
+        if ref is None:
+            return None
+        for i, row in enumerate(self._rows):
+            if row.ref == ref:
+                return i
+        return None
+
+    # --- mutators ----------------------------------------------------------
+
+    def set_title(self, title: str) -> None:
+        if title != self._title:
+            self._title = title
+            self.query_one(".title", Label).update(title)
+
+    def set_info(self, text: str) -> None:
+        self.query_one(".info", Static).update(text)
+
+    def highlight(self, ref: EntityRef | None) -> bool:
+        index = self.index_of(ref)
+        if index is None:
             return False
-
-        self._emit('click')
+        self.option_list.highlighted = index
         return True
 
+    def set_rows(self, rows: Sequence[Row]) -> bool:
+        """Replace the rows, keeping the highlight on the same entity.
 
-class List(urwid.ListBox):
-    signals = ["choice", "modified"]
+        Returns False (and does nothing) when the rows are unchanged, so a
+        1 Hz refresh of an unchanged graph costs no rendering at all.
+        """
+        rows = tuple(rows)
+        key = tuple((r.ref, r.style) for r in rows)
+        if key == self._row_key:
+            return False
 
-    def sizing(self):
-        return frozenset([urwid.FIXED])
+        option_list = self.option_list
+        previous_ref = self.highlighted_ref
+        previous_index = option_list.highlighted
 
-    def __init__(self, choices):
-        self.choices_widgets = []
-        self.set_choices(choices)
-
-    def reset_widget(self):
-        super().__init__(
-            urwid.SimpleFocusListWalker(self.choices_widgets))
-        urwid.connect_signal(self.body, 'modified', self.modified_callback)
-
-    def modified_callback(self):
-        self._emit('modified')
-
-    def set_choices(self, choices):
-        self.choices_widgets = []
-        for style, item in choices:
-            button = ListEntry(item)
-            urwid.connect_signal(button, 'click', self.item_chosen, item)
-            self.choices_widgets.append(urwid.AttrMap(
-                button, style, focus_map='reversed'))
-        self.reset_widget()
-
-    def reset_list(self, choices):
-        choices_names = [item[1].name_string() for item in choices]
-        focus = self.focus
-        if focus:
-            if focus.original_widget.get_text() in choices_names:
-                focus_position = choices_names.index(
-                    focus.original_widget.get_text())
-            else:
-                focus_position = self.focus_position
-                focus_position = max(0, min(focus_position, len(choices) - 1))
-        else:
-            focus_position = 0
-
-        self.set_choices(choices)
-        if len(choices) > 0:
-            self.focus_position = focus_position
-
-    def item_chosen(self, button, choice):
-        self._emit('choice', button, choice)
-
-
-class PaddedListFrame(urwid.Padding):
-    def sizing(self):
-        return frozenset([urwid.FIXED])
-
-    def __init__(self, title, choices):
-        self.header = urwid.Pile(
-            [('pack', urwid.Text(('header', title))), ('pack', urwid.Divider())])
-        self.list = List(choices)
-        self.footer = urwid.Pile(
-            [('pack', urwid.Divider()), ('pack', urwid.Text(('footer', '')))])
-
-        body = urwid.Frame(self.list, self.header, self.footer)
-        super().__init__(body, left=2, right=2)
-
-    def get_selection(self):
-        if self.original_widget.body.focus:
-            return self.original_widget.body.focus.base_widget.original_item
-        else:
-            return None
-
-    def set_title(self, title):
-        self.header[0].set_text(('header', title))
-
-    def set_footer(self, footer):
-        self.footer[1].set_text(('footer', footer))
-
-    def reset_list(self, choices):
-        self.list.reset_list(choices)
-
-
-class ListColumn(urwid.Columns):
-    signals = ["keypress"]
-
-    class Columns(Enum):
-        LEFT = 0
-        MIDDLE = 1
-        RIGHT = 2
-
-    def __init__(self, choices_left, choices_middle, choices_right):
-        self.column_left = PaddedListFrame("Input:", choices_left)
-        self.column_middle = PaddedListFrame("middle choice:", choices_middle)
-        self.column_right = PaddedListFrame("Output:", choices_right)
-
-        body = [self.column_left] + [self.column_middle] + [self.column_right]
-        super().__init__(body)
-
-    def keypress(self, size, key):
-        previously_selected_column = self.get_selected_column()
-        super().keypress(size, key)
-        self._emit('keypress', key, previously_selected_column)
-
-    def get_selection(self):
-        if self.focus:
-            return self.focus.get_selection()
-        else:
-            None
-
-    def get_selection_index(self):
-        if self.focus and self.focus.base_widget.body.focus:
-            return self.focus.base_widget.body.focus_position
-        else:
-            None
-
-    def get_selected_column(self):
-        if self.focus:
-            return self.focus_col
-        else:
-            None
-
-    def set_title(self, title, column):
-        if column == self.Columns.LEFT or column == self.Columns.LEFT.value:
-            self.column_left.set_title(title)
-        elif column == self.Columns.MIDDLE or column == self.Columns.MIDDLE.value:
-            self.column_middle.set_title(title)
-        elif column == self.Columns.RIGHT or column == self.Columns.RIGHT.value:
-            self.column_right.set_title(title)
-
-    def set_footer(self, footer, column):
-        if column == self.Columns.LEFT or column == self.Columns.LEFT.value:
-            self.column_left.set_footer(footer)
-        elif column == self.Columns.MIDDLE or column == self.Columns.MIDDLE.value:
-            self.column_middle.set_footer(footer)
-        elif column == self.Columns.RIGHT or column == self.Columns.RIGHT.value:
-            self.column_right.set_footer(footer)
-
-    def reset_list(self, choices, column):
-        if column == self.Columns.LEFT or column == self.Columns.LEFT.value:
-            self.column_left.reset_list(choices)
-        elif column == self.Columns.MIDDLE or column == self.Columns.MIDDLE.value:
-            self.column_middle.reset_list(choices)
-        elif column == self.Columns.RIGHT or column == self.Columns.RIGHT.value:
-            self.column_right.reset_list(choices)
+        self._rows = rows
+        self._row_key = key
+        option_list.clear_options()
+        if rows:
+            option_list.add_options([Option(row_text(row)) for row in rows])
+            index = self.index_of(previous_ref)
+            if index is None:
+                index = 0 if previous_index is None else max(0, min(previous_index, len(rows) - 1))
+            option_list.highlighted = index
+        return True

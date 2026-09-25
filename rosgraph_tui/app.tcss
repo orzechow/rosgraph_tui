@@ -1,0 +1,36 @@
+Screen {
+    layout: vertical;
+}
+
+#columns {
+    height: 1fr;
+}
+
+.column {
+    width: 1fr;
+    height: 1fr;
+    padding: 0 1;
+}
+
+.column .title {
+    height: 1;
+    text-style: bold;
+    width: 100%;
+}
+
+.column OptionList {
+    height: 1fr;
+    border: none;
+    padding: 0;
+    background: transparent;
+    scrollbar-size: 1 1;
+}
+
+.column OptionList:focus {
+    background: $surface;
+}
+
+.column .info {
+    height: 1;
+    color: $text-muted;
+}

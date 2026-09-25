@@ -14,7 +14,9 @@ from std_msgs.msg import String
 def main() -> None:
     suffix = sys.argv[1] if len(sys.argv) > 1 else ""
     rclpy.init()
-    qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+    qos = QoSProfile(
+        depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.TRANSIENT_LOCAL
+    )
     talker = rclpy.create_node("talker" + suffix, namespace="/it")
     listener = rclpy.create_node("listener" + suffix, namespace="/it")
     publisher = talker.create_publisher(String, "/it/chatter", qos)

@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rosgraph_tui"
+description = "An interactive terminal user interface (TUI) to explore and debug your ROS 2 graph."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Piotr Orzechowski", email = "orzechow@posteo.de" }]
+maintainers = [{ name = "Piotr Orzechowski", email = "orzechow@posteo.de" }]
+requires-python = ">=3.10"
+dynamic = ["version"]
+# rclpy is deliberately absent: it comes from the sourced ROS 2 installation.
+dependencies = [
+    "textual>=8,<9",
+    "rapidfuzz>=3",
+]
+classifiers = [
+    "Environment :: Console",
+    "Framework :: Robot Framework :: Tool",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: Unix",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Debuggers",
+]
+
+[project.urls]
+Repository = "https://github.com/orzechow/rosgraph_tui"
+
+[project.scripts]
+rosgraph_tui = "rosgraph_tui.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-asyncio>=0.23", "ruff"]
+
+[dependency-groups]
+dev = ["pytest>=7", "pytest-asyncio>=0.23", "ruff"]
+media = ["cairosvg>=2.7", "pillow>=10"]
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.packages.find]
+include = ["rosgraph_tui*"]
+
+[tool.setuptools.package-data]
+rosgraph_tui = ["*.tcss", "fixtures/*.json"]
+
+[tool.setuptools.dynamic]
+version = { attr = "rosgraph_tui.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+# ROS 2 ships pytest plugins (launch_testing*) that break on pytest >= 9; we do not need them
+addopts = "-p no:launch_testing -p no:launch_ros"
+asyncio_mode = "auto"
+markers = [
+    "ros: needs a sourced ROS 2 installation (run inside the Docker job)",
+    "perf: performance budgets on a synthetic large graph",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]

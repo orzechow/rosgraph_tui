@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>rosgraph_tui</name>
+  <version>0.1.0</version>
+  <description>An interactive terminal user interface (TUI) to explore and debug your ROS 2 graph.</description>
+  <maintainer email="orzechow@posteo.de">Piotr Orzechowski</maintainer>
+  <license>MIT</license>
+  <url type="repository">https://github.com/orzechow/rosgraph_tui</url>
+
+  <exec_depend>rclpy</exec_depend>
+  <!-- textual and rapidfuzz are installed with pip (see README); the Ubuntu
+       packages are too old for this tool. -->
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

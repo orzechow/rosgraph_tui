@@ -91,6 +91,30 @@ a string, because colcon-python-setup-py `literal_eval`s a repr of the distribut
 `setup.py`. `setup.cfg` redirects scripts to `lib/rosgraph_tui` for `ros2 run`. On Humble, colcon
 needs `setuptools>=61` in the venv. rclpy is only in `package.xml`, never in pip dependencies.
 
+## Roadmap
+
+The README's Roadmap is the user-facing list; this is the fuller picture with the hooks already in place.
+
+- **Merge follow-up:** replace `@ros2_port` with `@main` in README and `scripts` docs; close PR 1 (superseded).
+- **Release:** publish `rosgraph-tui` on PyPI (name is free) and add rosdep keys so the colcon path needs no
+  pip step. Until then the README says "not on PyPI yet"; keep it honest.
+- **Services and actions:** `Kind` is a `str` enum and `Entity`/`EntityRef`/`derive_view` are kind-agnostic
+  on purpose. Add `SERVICE`/`ACTION` kinds, extend `RawGraph` and `build_snapshot`, feed them from
+  `get_service_names_and_types_by_node` / `get_client_names_and_types_by_node` and `rclpy.action.graph`
+  (`get_action_server_names_and_types_by_node`, `..._client_...`). Inputs/outputs map to clients → service
+  → server. Keep the per-node call budget in mind (2 more calls per node).
+- **Topic stats (`hz`, `bw`, `delay`):** the old PR 1 TODOs. Needs a real subscription, so it must be
+  opt-in for the topic under the cursor only, run in the polling worker with a spun executor for that one
+  subscription, and be torn down when the highlight moves. Do not subscribe to everything.
+- **Prettier UI:** theme and colours (`app.tcss` is deliberately minimal), maybe a compact/wide layout,
+  QoS mismatch highlighting (publisher vs subscriber reliability), better empty-state text.
+- **Better UX:** help overlay (`?`), mouse click to root, copy the highlighted name to the clipboard,
+  Ctrl+arrow to move between columns without choosing, remembering the last filter per scope.
+- **Polling without polling:** wake on the rmw graph guard condition instead of the 1 Hz timer once an
+  rclpy API for it is confirmed on Humble; the adaptive interval and digest check stay as the fallback.
+- **Textual harness cost:** pilot key presses cost ~150 ms each on a 2300-row `OptionList`; if that ever
+  matters for real users, look at incremental option updates instead of `clear_options` + `add_options`.
+
 ## Conventions
 
 Python ≥ 3.10 (Humble): no `StrEnum`, `Self`, `tomllib`. ruff line length 110, rules E/F/W/I/UP/B.

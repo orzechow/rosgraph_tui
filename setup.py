@@ -1,36 +1,34 @@
-import setuptools
+"""Kept for colcon / ament_python.  All metadata lives in pyproject.toml.
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+Two things PEP 621 cannot express are done here:
 
-with open("requirements.txt", "r") as fh:
-    requirements = fh.read()
+* the ament index resource marker and package.xml are installed as
+  ``data_files``;
+* colcon-python-setup-py introspects ``setup.py`` by ``repr()``-ing the
+  Distribution and ``ast.literal_eval``-ing the result, which breaks on the
+  ``SpecifierSet`` that setuptools stores for ``requires-python`` when it
+  comes from pyproject.toml.  ``_Distribution`` turns it back into the plain
+  string that a ``python_requires=`` keyword would have produced.
+"""
 
-setuptools.setup(
-    name='rosgraph_tui',
-    version='0.0.1',
-    author='Piotr Orzechowski',
-    author_email='orzechow@posteo.de',
-    description='An interactive terminal user interface (TUI) to explore and debug your ROS graph.',
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url='https://github.com/orzechow/rosgraph_tui',
-    packages=setuptools.find_packages(),
-    license='MIT',
-    classifiers=[
-        "Environment :: Console",
-        "Framework :: Robot Framework :: Tool",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
-        "Natural Language :: English",
-        "Operating System :: Unix",
-        "Programming Language :: Python :: 2",
-        "Topic :: Software Development"
+from setuptools import Distribution, setup
+
+package_name = "rosgraph_tui"
+
+
+class _Distribution(Distribution):
+    def parse_config_files(self, filenames=None, ignore_option_errors=False):
+        super().parse_config_files(filenames=filenames, ignore_option_errors=ignore_option_errors)
+        for obj in (self, self.metadata):
+            value = getattr(obj, "python_requires", None)
+            if value is not None and not isinstance(value, str):
+                obj.python_requires = str(value)
+
+
+setup(
+    distclass=_Distribution,
+    data_files=[
+        ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
+        ("share/" + package_name, ["package.xml"]),
     ],
-    entry_points={
-        'console_scripts': [
-            'rosgraph_tui = rosgraph_tui.__main__:main'
-        ]
-    },
-    install_requires=requirements
 )

@@ -1,0 +1,52 @@
+{
+  "nodes": [
+    {"name": "talker", "namespace": "/"},
+    {"name": "listener", "namespace": "/"},
+    {"name": "listener", "namespace": "/"},
+    {"name": "driver", "namespace": "/camera"},
+    {"name": "rectify", "namespace": "/camera"},
+    {"name": "detector", "namespace": "/perception"},
+    {"name": "planner", "namespace": "/planning"},
+    {"name": "controller", "namespace": "/control"},
+    {"name": "_ros2cli_daemon_0", "namespace": "/"},
+    {"name": "logger", "namespace": "/"}
+  ],
+  "topics": [
+    {"name": "/chatter", "types": ["std_msgs/msg/String"]},
+    {"name": "/rosout", "types": ["rcl_interfaces/msg/Log"]},
+    {"name": "/parameter_events", "types": ["rcl_interfaces/msg/ParameterEvent"]},
+    {"name": "/camera/image_raw", "types": ["sensor_msgs/msg/Image"]},
+    {"name": "/camera/camera_info", "types": ["sensor_msgs/msg/CameraInfo"]},
+    {"name": "/camera/image_rect", "types": ["sensor_msgs/msg/Image"]},
+    {"name": "/perception/objects", "types": ["vision_msgs/msg/Detection2DArray"]},
+    {"name": "/planning/trajectory", "types": ["nav_msgs/msg/Path"]},
+    {"name": "/control/cmd_vel", "types": ["geometry_msgs/msg/Twist", "geometry_msgs/msg/TwistStamped"]},
+    {"name": "/diagnostics", "types": ["diagnostic_msgs/msg/DiagnosticArray"]},
+    {"name": "/_internal/heartbeat", "types": ["std_msgs/msg/Empty"]}
+  ],
+  "publications": [
+    {"node": "/talker", "topic": "/chatter", "type": "std_msgs/msg/String", "qos": {"reliability": "reliable", "durability": "volatile"}},
+    {"node": "/talker", "topic": "/rosout", "type": "rcl_interfaces/msg/Log"},
+    {"node": "/talker", "topic": "/parameter_events", "type": "rcl_interfaces/msg/ParameterEvent"},
+    {"node": "/listener", "topic": "/rosout", "type": "rcl_interfaces/msg/Log"},
+    {"node": "/camera/driver", "topic": "/camera/image_raw", "type": "sensor_msgs/msg/Image", "qos": {"reliability": "best_effort", "durability": "volatile"}},
+    {"node": "/camera/driver", "topic": "/camera/camera_info", "type": "sensor_msgs/msg/CameraInfo", "qos": {"reliability": "reliable", "durability": "transient_local"}},
+    {"node": "/camera/rectify", "topic": "/camera/image_rect", "type": "sensor_msgs/msg/Image", "qos": {"reliability": "best_effort", "durability": "volatile"}},
+    {"node": "/perception/detector", "topic": "/perception/objects", "type": "vision_msgs/msg/Detection2DArray", "qos": {"reliability": "reliable", "durability": "volatile"}},
+    {"node": "/planning/planner", "topic": "/planning/trajectory", "type": "nav_msgs/msg/Path", "qos": {"reliability": "reliable", "durability": "volatile"}},
+    {"node": "/control/controller", "topic": "/control/cmd_vel", "type": "geometry_msgs/msg/Twist", "qos": {"reliability": "reliable", "durability": "volatile"}},
+    {"node": "/control/controller", "topic": "/diagnostics", "type": "diagnostic_msgs/msg/DiagnosticArray"},
+    {"node": "/_ros2cli_daemon_0", "topic": "/_internal/heartbeat", "type": "std_msgs/msg/Empty"},
+    {"node": "/_ros2cli_daemon_0", "topic": "/rosout", "type": "rcl_interfaces/msg/Log"}
+  ],
+  "subscriptions": [
+    {"node": "/listener", "topic": "/chatter", "type": "std_msgs/msg/String", "qos": {"reliability": "reliable", "durability": "volatile"}},
+    {"node": "/camera/rectify", "topic": "/camera/image_raw", "type": "sensor_msgs/msg/Image", "qos": {"reliability": "best_effort", "durability": "volatile"}},
+    {"node": "/camera/rectify", "topic": "/camera/camera_info", "type": "sensor_msgs/msg/CameraInfo", "qos": {"reliability": "reliable", "durability": "transient_local"}},
+    {"node": "/perception/detector", "topic": "/camera/image_rect", "type": "sensor_msgs/msg/Image", "qos": {"reliability": "best_effort", "durability": "volatile"}},
+    {"node": "/planning/planner", "topic": "/perception/objects", "type": "vision_msgs/msg/Detection2DArray", "qos": {"reliability": "reliable", "durability": "volatile"}},
+    {"node": "/control/controller", "topic": "/planning/trajectory", "type": "nav_msgs/msg/Path", "qos": {"reliability": "reliable", "durability": "volatile"}},
+    {"node": "/logger", "topic": "/rosout", "type": "rcl_interfaces/msg/Log"},
+    {"node": "/logger", "topic": "/control/cmd_vel", "type": "geometry_msgs/msg/TwistStamped", "qos": {"reliability": "best_effort", "durability": "volatile"}}
+  ]
+}

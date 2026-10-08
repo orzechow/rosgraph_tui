@@ -13,6 +13,7 @@ from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.timer import Timer
 from textual.widgets import Footer, Header, OptionList
+from textual.worker import Worker
 
 from rosgraph_tui import viewmodel as vm
 from rosgraph_tui.model import Endpoint, EntityRef, GraphSnapshot, Kind
@@ -47,10 +48,12 @@ class RosgraphApp(App[None]):
         self.base_interval = 1.0 / refresh_rate if refresh_rate > 0 else 0.0
         self._interval = self.base_interval
         self._timer: Timer | None = None
-        self._poll_in_flight = False
+        self._poll_worker: Worker | None = None
         self._poll_error = ""
         self._last_poll_at = 0.0
         self._endpoints: dict[tuple[int, str], list[Endpoint]] = {}
+        self._endpoints_pending: set[tuple[int, str]] = set()
+        self._columns: list[EntityColumn] | None = None
         self._render_scheduled = False
         self._last_filter = ""
         self._initial_state = ViewState(include_hidden=include_hidden)
@@ -67,7 +70,9 @@ class RosgraphApp(App[None]):
 
     @property
     def columns(self) -> list[EntityColumn]:
-        return [self.query_one(f"#{name}", EntityColumn) for name in ("left", "middle", "right")]
+        if self._columns is None:
+            self._columns = [self.query_one(f"#{name}", EntityColumn) for name in ("left", "middle", "right")]
+        return self._columns
 
     def column(self, index: int) -> EntityColumn:
         return self.columns[index]
@@ -84,6 +89,8 @@ class RosgraphApp(App[None]):
         self.column(index).option_list.focus()
 
     def on_mount(self) -> None:
+        self._columns = None
+        _ = self.columns  # resolve the three widgets once; they never change
         self.state = self._initial_state
         self.focus_column(Column.MIDDLE)
         self._install_signal_handlers()
@@ -98,8 +105,8 @@ class RosgraphApp(App[None]):
             loop = asyncio.get_running_loop()
             for sig in (signal.SIGINT, signal.SIGTERM):
                 loop.add_signal_handler(sig, self.exit)
-        except (NotImplementedError, RuntimeError):  # pragma: no cover - platform dependent
-            pass
+        except (NotImplementedError, RuntimeError, ValueError):  # pragma: no cover - platform dependent
+            pass  # no signal handlers off the main thread / outside a running loop
 
     # --- polling ----------------------------------------------------------
 
@@ -117,38 +124,54 @@ class RosgraphApp(App[None]):
     def action_refresh(self) -> None:
         self._start_poll(full=True)
 
+    @property
+    def poll_in_flight(self) -> bool:
+        worker = self._poll_worker
+        return worker is not None and not worker.is_finished
+
     def _start_poll(self, full: bool) -> None:
-        if self._poll_in_flight:
+        if self.poll_in_flight:
             return
-        self._poll_in_flight = True
-        self._poll(full)
+        self._poll_worker = self._poll(full)
 
     @work(thread=True, group="poll", exit_on_error=False)
     def _poll(self, full: bool) -> None:
         try:
             snapshot = self.source.snapshot(full=full)
         except SourceError as exc:
-            self.call_from_thread(self._apply_poll_error, str(exc))
+            self._report_from_worker(str(exc))
+            return
         except Exception as exc:  # noqa: BLE001 - keep the UI alive, show the error
-            self.call_from_thread(self._apply_poll_error, f"{type(exc).__name__}: {exc}")
-        else:
+            self._report_from_worker(f"{type(exc).__name__}: {exc}")
+            return
+        try:
             self.call_from_thread(self._apply_snapshot, snapshot)
+        except Exception as exc:  # noqa: BLE001 - a UI-side failure must not kill polling
+            self._report_from_worker(f"{type(exc).__name__}: {exc}")
+
+    def _report_from_worker(self, message: str) -> None:
+        try:
+            self.call_from_thread(self._apply_poll_error, message)
+        except Exception:  # noqa: BLE001 - the app is shutting down; nothing to report to
+            pass
 
     def _apply_poll_error(self, message: str) -> None:
-        self._poll_in_flight = False
         self._poll_error = message
         self._update_subtitle()
 
     def _apply_snapshot(self, snapshot: GraphSnapshot) -> None:
-        self._poll_in_flight = False
         self._poll_error = ""
         self._last_poll_at = time.time()
+        # QoS can change without a topology change (a node restarted with another
+        # profile), so the lazy cache is dropped on every poll; the one topic under
+        # the cursor is re-fetched with a single cheap call.
+        self._endpoints.clear()
+        self._endpoints_pending.clear()
         current = self.snapshot
-        if current is not None and current.digest != snapshot.digest:
-            self._endpoints.clear()
         if current is None or current.digest != snapshot.digest:
             self.snapshot = snapshot  # triggers a render
         else:
+            self._update_infos()
             self._update_subtitle()
         self._adapt_interval(snapshot.poll_ms / 1000.0)
 
@@ -166,11 +189,12 @@ class RosgraphApp(App[None]):
             return None
         key = (self.snapshot.digest, ref.name)
         endpoints = self._endpoints.get(key)
-        if endpoints is None:
+        if endpoints is None and key not in self._endpoints_pending:
+            self._endpoints_pending.add(key)
             self._fetch_endpoints(key)
         return endpoints
 
-    @work(thread=True, group="qos", exclusive=True, exit_on_error=False)
+    @work(thread=True, group="qos", exit_on_error=False)
     def _fetch_endpoints(self, key: tuple[int, str]) -> None:
         try:
             endpoints = self.source.topic_endpoints(key[1])
@@ -179,7 +203,9 @@ class RosgraphApp(App[None]):
         self.call_from_thread(self._store_endpoints, key, endpoints)
 
     def _store_endpoints(self, key: tuple[int, str], endpoints: list[Endpoint]) -> None:
-        self._endpoints[key] = endpoints
+        self._endpoints_pending.discard(key)
+        if self.snapshot is not None and key[0] == self.snapshot.digest:
+            self._endpoints[key] = endpoints
         self._update_infos()
 
     # --- rendering --------------------------------------------------------
@@ -199,8 +225,8 @@ class RosgraphApp(App[None]):
 
     def _render(self) -> None:
         self._render_scheduled = False
-        if not self.is_mounted:
-            return
+        if not self.is_running or self._columns is None:
+            return  # a poll finishing during shutdown must not touch a torn-down DOM
         view = vm.derive_view(self.snapshot, self.state)
         filter_changed = self.state.filter_text != self._last_filter
         self._last_filter = self.state.filter_text
@@ -296,7 +322,7 @@ class RosgraphApp(App[None]):
         self._update_infos()
 
     def choose(self, ref: EntityRef) -> None:
-        previous = self.state.root
+        previous = self.state.root or self.state.preview  # where we came from, rooted or previewing
         self.state = vm.choose(self.state, ref)
         self._render()  # synchronous so the highlight below sees the new rows
         self.focus_column(Column.MIDDLE)

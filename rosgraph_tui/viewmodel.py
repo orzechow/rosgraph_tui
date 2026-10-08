@@ -176,11 +176,13 @@ def derive_view(snapshot: GraphSnapshot | None, state: ViewState) -> ViewModel:
         return ViewModel(left, middle, right)
 
     root = state.root
-    entity = vis.get(root)
+    entity = snapshot.get(root)  # the full snapshot: "gone" means really gone, not merely hidden
     if entity is None:
         gone = Row(root, "gone", root.label)
         middle = ColumnModel(f"{root.kind.title} (gone):", (gone,), info=query)
         return ViewModel(ColumnModel("Input:"), middle, ColumnModel("Output:"), status="root gone")
+    if entity.hidden and not state.include_hidden:
+        vis = snapshot  # a hidden root stays visible together with its connections
 
     left, right = _side_columns(vis, root, query)
     middle = ColumnModel(f"{root.kind.title}:", _rows(vis, [root], Column.MIDDLE, root), info=query)

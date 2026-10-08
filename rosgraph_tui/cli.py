@@ -80,7 +80,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         app.run()
     finally:
         source.close()
-    return 0
+    return app.return_code or 0
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -43,3 +43,25 @@ def test_missing_rclpy_error_message(monkeypatch):
     monkeypatch.setattr(mod, "rclpy", None)
     with pytest.raises(SourceError, match="source /opt/ros"):
         mod.RclpyGraphSource()
+
+
+def test_main_propagates_the_app_return_code(monkeypatch):
+    import rosgraph_tui.app as app_module
+    from rosgraph_tui.cli import main
+
+    class StubApp:
+        def __init__(self, source, include_hidden, refresh_rate):
+            self.return_code = None
+
+        def run(self):
+            self.return_code = 2
+
+    monkeypatch.setattr(app_module, "RosgraphApp", StubApp)
+    assert main(["--demo"]) == 2
+
+    class CleanApp(StubApp):
+        def run(self):
+            self.return_code = None
+
+    monkeypatch.setattr(app_module, "RosgraphApp", CleanApp)
+    assert main(["--demo"]) == 0

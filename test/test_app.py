@@ -294,3 +294,131 @@ async def test_walk_into_preview_column_roots():
         await pilot.pause()
         assert app.state.root == LISTENER
         assert app.column(Column.LEFT).highlighted_ref == CHATTER
+
+
+class CountingSource(FakeGraphSource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.endpoint_calls: list[str] = []
+
+    def topic_endpoints(self, topic):
+        self.endpoint_calls.append(topic)
+        return super().topic_endpoints(topic)
+
+
+def counting_demo() -> CountingSource:
+    src = demo_source()
+    return CountingSource(src._raw, src._qos, name="demo")
+
+
+async def test_qos_is_refetched_after_a_poll_without_topology_change():
+    source = counting_demo()
+    app = make_app(source)
+    async with app.run_test(size=SIZE) as pilot:
+        await settle(app, pilot)
+        app.choose(TALKER)
+        await pilot.pause()
+        await pilot.press("right")
+        app.column(Column.RIGHT).highlight(CHATTER)
+        await settle(app, pilot)
+        info = str(app.column(Column.RIGHT).query_one(".info").render())
+        assert "reliable / volatile" in info
+        # same graph, publisher QoS changed (a node restarted with another profile)
+        from rosgraph_tui.model import QosSummary
+
+        qos = dict(source._qos)
+        qos[("/talker", "/chatter", True)] = QosSummary("best_effort", "transient_local")
+        source.set_raw(copy.deepcopy(source._raw), qos)
+        digest = app.snapshot.digest
+        app.action_refresh()
+        await settle(app, pilot)
+        await settle(app, pilot)
+        assert app.snapshot.digest == digest
+        info = str(app.column(Column.RIGHT).query_one(".info").render())
+        assert "best_effort / transient_local" in info
+
+
+async def test_one_endpoint_fetch_per_highlighted_topic():
+    source = counting_demo()
+    app = make_app(source)
+    async with app.run_test(size=SIZE) as pilot:
+        await settle(app, pilot)
+        app.choose(TALKER)
+        await pilot.pause()
+        await pilot.press("right")
+        app.column(Column.RIGHT).highlight(CHATTER)
+        await settle(app, pilot)
+        await settle(app, pilot)
+        assert source.endpoint_calls.count("/chatter") == 1
+        # both side columns showing topics: both get fetched, each once
+        app.choose(EntityRef(Kind.NODE, "/camera/rectify"))
+        await pilot.pause()
+        await settle(app, pilot)
+        await settle(app, pilot)
+        left = app.column(Column.LEFT).highlighted_ref.name
+        right = app.column(Column.RIGHT).highlighted_ref.name
+        assert source.endpoint_calls.count(left) == 1
+        assert source.endpoint_calls.count(right) == 1
+        assert "QoS" in str(app.column(Column.LEFT).query_one(".info").render())
+        assert "QoS" in str(app.column(Column.RIGHT).query_one(".info").render())
+
+
+async def test_polling_survives_an_exception_while_applying():
+    source = demo_source()
+    app = make_app(source)
+    async with app.run_test(size=SIZE) as pilot:
+        await settle(app, pilot)
+        original = app._apply_snapshot
+        calls = {"n": 0}
+
+        def flaky(snapshot):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("boom on the UI thread")
+            original(snapshot)
+
+        app._apply_snapshot = flaky
+        app.action_refresh()
+        await settle(app, pilot)
+        assert not app.poll_in_flight
+        assert "ERROR RuntimeError: boom" in app.sub_title
+        app.action_refresh()
+        await settle(app, pilot)
+        assert calls["n"] == 2
+        assert source.poll_count == 3
+        assert "ERROR" not in app.sub_title
+
+
+async def test_walking_out_of_a_preview_column_keeps_the_origin_highlighted():
+    app = make_app()
+    async with app.run_test(size=SIZE) as pilot:
+        await settle(app, pilot)
+        app.column(Column.MIDDLE).highlight(TALKER)
+        await pilot.pause()
+        await pilot.pause()
+        await pilot.press("right")
+        rosout = EntityRef(Kind.TOPIC, "/rosout")
+        app.column(Column.RIGHT).highlight(rosout)
+        await pilot.press("right")
+        await pilot.pause()
+        assert app.state.root == rosout
+        left = app.column(Column.LEFT)
+        assert [r.ref for r in left.rows] == [LISTENER, TALKER]
+        assert left.highlighted_ref == TALKER
+
+
+async def test_hidden_root_is_not_reported_gone_when_hidden_names_are_toggled_off():
+    app = make_app()
+    async with app.run_test(size=SIZE) as pilot:
+        await settle(app, pilot)
+        await pilot.press("ctrl+t")
+        await pilot.pause()
+        app.choose(DAEMON)
+        await pilot.pause()
+        await pilot.press("ctrl+t")
+        await pilot.pause()
+        await pilot.pause()
+        middle = app.column(Column.MIDDLE)
+        assert middle.rows[0].ref == DAEMON and middle.rows[0].style == "chosen"
+        assert "gone" not in app.sub_title
+        assert rows(app, Column.RIGHT)  # its publications are still shown

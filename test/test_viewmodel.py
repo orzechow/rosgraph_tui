@@ -186,3 +186,13 @@ def test_middle_column_cached_across_preview_changes(demo_snapshot):
     derive_view(demo_snapshot, set_preview(ViewState(filter_text="cam"), TALKER))
     derive_view(demo_snapshot, set_preview(ViewState(filter_text="cam"), CHATTER))
     assert _middle_column.cache_info().hits >= 1
+
+
+def test_hidden_root_stays_visible_when_hidden_names_are_off(demo_snapshot):
+    vm = derive_view(demo_snapshot, choose(ViewState(include_hidden=False), DAEMON))
+    assert vm.status == ""
+    assert vm.middle.rows[0].style == "chosen"
+    assert EntityRef(Kind.TOPIC, "/_internal/heartbeat") in refs(vm.right)
+    # a root that is really absent is still reported gone
+    gone = derive_view(demo_snapshot, choose(ViewState(), EntityRef(Kind.NODE, "/ghost")))
+    assert gone.status == "root gone"

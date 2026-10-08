@@ -422,3 +422,21 @@ async def test_hidden_root_is_not_reported_gone_when_hidden_names_are_toggled_of
         assert middle.rows[0].ref == DAEMON and middle.rows[0].style == "chosen"
         assert "gone" not in app.sub_title
         assert rows(app, Column.RIGHT)  # its publications are still shown
+
+
+async def test_filter_highlights_best_match_in_side_columns_when_rooted():
+    app = make_app()
+    async with app.run_test(size=SIZE) as pilot:
+        await settle(app, pilot)
+        app.choose(EntityRef(Kind.NODE, "/control/controller"))
+        await pilot.pause()
+        await pilot.press("right")
+        right = app.column(Column.RIGHT)
+        assert len(right.rows) == 2
+        right.highlight(EntityRef(Kind.TOPIC, "/control/cmd_vel"))
+        await pilot.press("d", "i", "a", "g")
+        await pilot.pause()
+        await pilot.pause()
+        assert [r.ref.name for r in right.rows] == ["/diagnostics"]
+        assert right.option_list.highlighted == 0
+        assert right.highlighted_ref == EntityRef(Kind.TOPIC, "/diagnostics")

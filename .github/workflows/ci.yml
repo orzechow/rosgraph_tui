@@ -48,8 +48,10 @@ jobs:
         shell: bash
         run: |
           source /opt/ros/jazzy/setup.bash
-          mkdir -p ws/src && cp -r "$PWD" ws/src/rosgraph_tui || true
-          cd ws && colcon build --packages-select rosgraph_tui
+          git config --global --add safe.directory "$PWD"
+          mkdir -p /tmp/ws/src/rosgraph_tui
+          git archive HEAD | tar -x -C /tmp/ws/src/rosgraph_tui   # clean tree, no .venv
+          cd /tmp/ws && colcon build --packages-select rosgraph_tui
           source install/setup.bash
           ros2 pkg executables rosgraph_tui | grep rosgraph_tui
           ros2 run rosgraph_tui rosgraph_tui --version

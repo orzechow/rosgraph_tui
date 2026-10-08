@@ -143,7 +143,9 @@ class RclpyGraphSource(GraphSource):
                 and lists_key == self._last_lists
                 and self._ticks % self.full_every != 0
             ):
-                return last
+                # unchanged lists: same entities, but report what this cheap poll really cost
+                cheap_ms = (time.perf_counter() - started) * 1000.0
+                return GraphSnapshot(last.entities, time.time(), last.digest, cheap_ms)
 
             raw = RawGraph(nodes=nodes, topics=topics)
             pubs: dict[str, dict[str, list[str]]] = {}

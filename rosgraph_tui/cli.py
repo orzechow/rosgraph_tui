@@ -54,7 +54,12 @@ def make_source(args: argparse.Namespace, full_argv: list[str]):
     if args.demo:
         return demo_source()
     if args.fixture:
-        return FakeGraphSource.from_json(args.fixture)
+        from rosgraph_tui.source import SourceError
+
+        try:
+            return FakeGraphSource.from_json(args.fixture)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise SourceError(f"could not load fixture {args.fixture}: {exc}") from exc
     from rosgraph_tui.rclpy_source import RclpyGraphSource
 
     return RclpyGraphSource(argv=full_argv, full_every=max(1, args.full_poll_every))

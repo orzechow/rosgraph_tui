@@ -231,13 +231,15 @@ class RosgraphApp(App[None]):
         filter_changed = self.state.filter_text != self._last_filter
         self._last_filter = self.state.filter_text
         left, middle, right = self.columns
+        # a new non-empty filter puts the highlight on the best match in the columns it narrows:
+        # the middle list while browsing, the side columns while rooted
+        jump = filter_changed and bool(self.state.filter_text)
+        narrowed = (left, right) if self.state.root is not None else (middle,)
         for column, model in zip((left, middle, right), (view.left, view.middle, view.right), strict=True):
             column.set_title(model.title)
-            # a new non-empty filter puts the highlight on the best match
-            keep = not (column is middle and filter_changed and self.state.filter_text)
-            column.set_rows(model.rows, keep_highlight=keep)
+            column.set_rows(model.rows, keep_highlight=not (jump and column in narrowed))
         self._sync_preview()
-        self._update_infos(view)
+        self._update_infos()
         self._update_subtitle(view.status)
 
     def _sync_preview(self) -> None:
@@ -249,9 +251,7 @@ class RosgraphApp(App[None]):
         if new_state is not self.state:
             self.state = new_state  # schedules one more (cheap, memoised) render
 
-    def _update_infos(self, view: vm.ViewModel | None = None) -> None:
-        if view is None:
-            view = vm.derive_view(self.snapshot, self.state)
+    def _update_infos(self) -> None:
         snapshot = self.snapshot.visible(self.state.include_hidden) if self.snapshot else None
         left, middle, right = self.columns
         for column in (left, right):

@@ -50,21 +50,28 @@ Data flows one way: `GraphSource.snapshot()` → `GraphSnapshot` → `derive_vie
   two calls per *node* (`get_publisher/subscriber_names_and_types_by_node`), never per topic; QoS comes
   from `topic_endpoints()` only for the topic under the cursor. `snapshot(full=False)` compares the
   node/topic lists with the last poll and returns the previous snapshot when unchanged, except every
-  `full_every`-th call. No executor is spun. Keep this cheap: Autoware-scale graphs are the target.
+  `full_every`-th call (reporting the cheap poll's own `poll_ms`). No executor is spun. Keep this
+  cheap: Autoware-scale graphs are the target.
 - `search.py` — rapidfuzz `partial_ratio`, case-insensitive, cutoff strictly > 50.
 - `viewmodel.py` — `ViewState` (frozen: `root`, `scope`, `filter_text`, `include_hidden`, `preview`)
   and the only transitions: `choose`, `escape` (one step per press: filter → root → scope → exit),
   `type_char`, `backspace`, `toggle_hidden`, `set_preview`. `derive_view` is `lru_cache`d on
   `(snapshot, state)`; the un-rooted middle column is cached separately (`_middle_column`) so a
   preview change (highlight moving) costs ~3 ms on 2000 topics. `preview` fills the side columns while
-  not rooted; the typed filter narrows the middle list (and the side columns only when rooted).
+  not rooted; the typed filter narrows the middle list (and the side columns only when rooted). The
+  root is resolved against the full snapshot: "gone" means absent, a hidden root stays visible with
+  its connections even when hidden names are off.
 - `app.py` — `RosgraphApp`. Two reactives (`snapshot`, `state`); any change schedules one coalesced
   `_render()` via `call_after_refresh`. Polling: `set_interval` → thread worker → `source.snapshot()` →
-  `call_from_thread(_apply_snapshot)`; same digest ⇒ no reactive change ⇒ no render. The interval
-  adapts so a poll never exceeds ~20 % of it. Key handling: printable chars/backspace in `on_key`
+  `call_from_thread(_apply_snapshot)`; same digest ⇒ no reactive change ⇒ no render. In-flight is the
+  `Worker` object (`poll_in_flight`), never a bool; a UI-side exception is reported in the subtitle
+  and polling continues. The lazy QoS cache (`_endpoints`, with `_endpoints_pending` to avoid
+  duplicate fetches) is dropped on every applied poll. The interval adapts so a poll never exceeds
+  ~20 % of it. The three `EntityColumn`s are resolved once (`columns`), not queried per access. Key handling: printable chars/backspace in `on_key`
   (no `Input` widget, so arrows stay free), everything else via `BINDINGS`. `_sync_preview()` keeps
   `state.preview` equal to the middle highlight. A filter change re-renders the middle column with
-  `keep_highlight=False` so the best match is highlighted.
+  `keep_highlight=False` so the best match is highlighted (side columns instead when rooted). The
+  info lines are built only in `_update_infos`; `ColumnModel` carries no info text.
 - `widgets.py` — `EntityColumn` = title `Label` + virtualised `OptionList` + info `Static`.
   `set_rows()` returns early when `(ref, style)` per row is unchanged, otherwise rebuilds and restores
   the highlight by ref. Never touches focus. Use `.title` / `.info` class selectors (`Label` is a
@@ -118,5 +125,7 @@ The README's Roadmap is the user-facing list; this is the fuller picture with th
 ## Conventions
 
 Python ≥ 3.10 (Humble): no `StrEnum`, `Self`, `tomllib`. ruff line length 110, rules E/F/W/I/UP/B.
+Dev dependencies live once, in `[project.optional-dependencies] dev`; the uv `dev` group just references
+`rosgraph_tui[dev]`, so `uv sync` and `pip install -e '.[dev]'` install the same list.
 Ubuntu's system Python is externally managed: all install instructions use a venv; in zsh quote
 extras (`'.[dev]'`). README install URLs point at `@ros2_port` until the PR is merged into `main`.

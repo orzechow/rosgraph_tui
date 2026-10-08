@@ -40,7 +40,8 @@ rosgraph_tui = "rosgraph_tui.cli:main"
 dev = ["pytest>=7", "pytest-asyncio>=0.23", "ruff"]
 
 [dependency-groups]
-dev = ["pytest>=7", "pytest-asyncio>=0.23", "ruff"]
+# the extra above is the single source of truth; uv installs it by default
+dev = ["rosgraph_tui[dev]"]
 media = ["cairosvg>=2.7", "pillow>=10"]
 
 [tool.setuptools]

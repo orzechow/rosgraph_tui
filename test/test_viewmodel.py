@@ -46,7 +46,6 @@ def test_scope_restricts_kind(demo_snapshot):
 def test_filter_orders_best_match_first(demo_snapshot):
     vm = derive_view(demo_snapshot, ViewState(filter_text="chatter"))
     assert refs(vm.middle)[0] == CHATTER
-    assert vm.middle.info == "chatter"
     assert LISTENER not in refs(vm.middle)
 
 

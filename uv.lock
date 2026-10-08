@@ -660,9 +660,7 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "ruff" },
+    { name = "rosgraph-tui", extra = ["dev"] },
 ]
 media = [
     { name = "cairosvg" },
@@ -680,11 +678,7 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=7" },
-    { name = "pytest-asyncio", specifier = ">=0.23" },
-    { name = "ruff" },
-]
+dev = [{ name = "rosgraph-tui", extras = ["dev"] }]
 media = [
     { name = "cairosvg", specifier = ">=2.7" },
     { name = "pillow", specifier = ">=10" },

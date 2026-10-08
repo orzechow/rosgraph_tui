@@ -37,7 +37,6 @@ class Row:
 class ColumnModel:
     title: str
     rows: tuple[Row, ...] = ()
-    info: str = ""
 
 
 @dataclass(frozen=True)
@@ -122,16 +121,11 @@ def _rows(
 
 
 @lru_cache(maxsize=16)
-def _middle_refs(snapshot: GraphSnapshot, kind: Kind | None, query: str) -> tuple[EntityRef, ...]:
-    """The fuzzy pass over the whole graph; cached so preview changes do not repeat it."""
-    return tuple(_filtered(snapshot, kind, query))
-
-
-@lru_cache(maxsize=16)
 def _middle_column(snapshot: GraphSnapshot, kind: Kind | None, query: str) -> ColumnModel:
-    """The un-rooted middle column; cached so a preview change costs no row building."""
-    rows = _rows(snapshot, _middle_refs(snapshot, kind, query), Column.MIDDLE, None)
-    return ColumnModel(_scope_title(snapshot, kind) + ":", rows, info=query)
+    """The un-rooted middle column, fuzzy pass included; cached so a preview change
+    (highlight moving) costs neither filtering nor row building."""
+    rows = _rows(snapshot, _filtered(snapshot, kind, query), Column.MIDDLE, None)
+    return ColumnModel(_scope_title(snapshot, kind) + ":", rows)
 
 
 def _filtered(snapshot: GraphSnapshot, kind: Kind | None, query: str) -> list[EntityRef]:
@@ -179,13 +173,13 @@ def derive_view(snapshot: GraphSnapshot | None, state: ViewState) -> ViewModel:
     entity = snapshot.get(root)  # the full snapshot: "gone" means really gone, not merely hidden
     if entity is None:
         gone = Row(root, "gone", root.label)
-        middle = ColumnModel(f"{root.kind.title} (gone):", (gone,), info=query)
+        middle = ColumnModel(f"{root.kind.title} (gone):", (gone,))
         return ViewModel(ColumnModel("Input:"), middle, ColumnModel("Output:"), status="root gone")
     if entity.hidden and not state.include_hidden:
         vis = snapshot  # a hidden root stays visible together with its connections
 
     left, right = _side_columns(vis, root, query)
-    middle = ColumnModel(f"{root.kind.title}:", _rows(vis, [root], Column.MIDDLE, root), info=query)
+    middle = ColumnModel(f"{root.kind.title}:", _rows(vis, [root], Column.MIDDLE, root))
     return ViewModel(left, middle, right)
 
 

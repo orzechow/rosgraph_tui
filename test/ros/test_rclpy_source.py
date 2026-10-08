@@ -64,7 +64,12 @@ def source(processes):
 
 
 def test_edges_types_and_duplicates(source):
-    snap = wait_for(source, lambda s: TALKER in s and LISTENER in s and CHATTER in s)
+    # both processes must have been discovered: the duplicate /it/talker shows as 2 instances
+    snap = wait_for(
+        source,
+        lambda s: TALKER in s and LISTENER in s and CHATTER in s and s.get(TALKER).instances == 2,
+        timeout=30.0,
+    )
     talker = snap.get(TALKER)
     listener = snap.get(LISTENER)
     chatter = snap.get(CHATTER)

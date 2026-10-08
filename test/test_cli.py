@@ -65,3 +65,21 @@ def test_main_propagates_the_app_return_code(monkeypatch):
 
     monkeypatch.setattr(app_module, "RosgraphApp", CleanApp)
     assert main(["--demo"]) == 0
+
+
+def test_bad_fixture_gives_a_one_line_error(tmp_path, capsys):
+    from rosgraph_tui.cli import main
+
+    assert main(["--fixture", str(tmp_path / "missing.json")]) == 1
+    err = capsys.readouterr().err
+    assert "could not load fixture" in err and "missing.json" in err and "Traceback" not in err
+
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json")
+    assert main(["--fixture", str(bad)]) == 1
+    assert "could not load fixture" in capsys.readouterr().err
+
+    incomplete = tmp_path / "incomplete.json"
+    incomplete.write_text('{"nodes": [{"namespace": "/"}]}')
+    assert main(["--fixture", str(incomplete)]) == 1
+    assert "could not load fixture" in capsys.readouterr().err
